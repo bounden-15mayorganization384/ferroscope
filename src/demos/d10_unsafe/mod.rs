@@ -420,6 +420,19 @@ impl Demo for UnsafeDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What does `unsafe` in Rust actually disable?",
+            [
+                "All compilation checks",
+                "Specific safety guarantees the compiler can't verify",
+                "Memory allocation",
+                "The borrow checker entirely",
+            ],
+            1,
+        ))
+    }
 }
 
 #[cfg(test)]

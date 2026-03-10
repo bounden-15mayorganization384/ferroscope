@@ -377,6 +377,19 @@ impl Demo for WasmDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What makes Rust ideal for WebAssembly?",
+            [
+                "It has a runtime",
+                "No GC, small binary size, and predictable performance",
+                "Built-in DOM access",
+                "JavaScript interop is automatic",
+            ],
+            1,
+        ))
+    }
 }
 
 #[cfg(test)]

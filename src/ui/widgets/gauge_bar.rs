@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 use ratatui::{
     layout::Rect,
     style::{Color, Style},
@@ -10,6 +12,8 @@ pub struct GaugeBar {
     pub label: String,
     pub value: f64,
     pub color: Color,
+    /// Current tick count — used to drive a subtle breathing pulse effect.
+    pub tick: u64,
 }
 
 impl GaugeBar {
@@ -18,6 +22,7 @@ impl GaugeBar {
             label: label.into(),
             value,
             color,
+            tick: 0,
         }
     }
 
@@ -25,8 +30,14 @@ impl GaugeBar {
         self.value.clamp(0.0, 1.0)
     }
 
+    /// Returns the display ratio with a gentle breathing pulse applied.
+    pub fn pulsed_value(&self) -> f64 {
+        let pulse = (self.tick as f64 * PI / 30.0).sin() * 0.03;
+        (self.clamped_value() + pulse).clamp(0.0, 1.0)
+    }
+
     pub fn render(&self, frame: &mut Frame, area: Rect) {
-        let ratio = self.clamped_value();
+        let ratio = self.pulsed_value();
         let pct = (ratio * 100.0) as u16;
         let gauge = Gauge::default()
             .block(
@@ -72,6 +83,25 @@ mod tests {
     }
 
     #[test]
+    fn test_pulsed_value_in_bounds() {
+        // pulsed value must always stay in [0, 1]
+        for tick in [0u64, 15, 30, 45, 60, 90, 120] {
+            let mut g = GaugeBar::new("test", 0.5, Color::Green);
+            g.tick = tick;
+            let v = g.pulsed_value();
+            assert!((0.0..=1.0).contains(&v), "tick={tick} pulsed_value={v}");
+        }
+    }
+
+    #[test]
+    fn test_pulsed_value_zero_base() {
+        let mut g = GaugeBar::new("test", 0.0, Color::Green);
+        g.tick = 0;
+        // At tick=0, sin(0)=0 → pulse=0 → clamped value stays 0
+        assert_eq!(g.pulsed_value(), 0.0);
+    }
+
+    #[test]
     fn test_render() {
         let g = GaugeBar::new("Memory", 0.75, Color::Blue);
         let backend = TestBackend::new(40, 5);
@@ -82,6 +112,15 @@ mod tests {
     #[test]
     fn test_render_zero() {
         let g = GaugeBar::new("CPU", 0.0, Color::Red);
+        let backend = TestBackend::new(40, 5);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| g.render(f, f.area())).unwrap();
+    }
+
+    #[test]
+    fn test_render_with_tick() {
+        let mut g = GaugeBar::new("CPU", 0.5, Color::Cyan);
+        g.tick = 47;
         let backend = TestBackend::new(40, 5);
         let mut terminal = Terminal::new(backend).unwrap();
         terminal.draw(|f| g.render(f, f.area())).unwrap();

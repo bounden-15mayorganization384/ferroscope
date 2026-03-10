@@ -6,6 +6,8 @@ use ratatui::{
     Frame,
 };
 
+use crate::theme;
+
 #[derive(Debug, Clone)]
 pub struct FlameGraph {
     pub frames: Vec<(String, f64)>,
@@ -28,6 +30,17 @@ impl FlameGraph {
     #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.frames.clear();
+    }
+
+    /// Returns a gradient color based on proportion: high = red, mid = orange, low = yellow
+    fn frame_color(proportion: f64) -> Color {
+        if proportion >= 0.7 {
+            theme::CRAB_RED
+        } else if proportion >= 0.4 {
+            theme::RUST_ORANGE
+        } else {
+            theme::BORROW_YELLOW
+        }
     }
 
     pub fn render(&self, frame: &mut Frame, area: Rect) {
@@ -58,7 +71,8 @@ impl FlameGraph {
             let pad: String = " ".repeat(padding);
             let pct = (proportion * 100.0) as u8;
             let text = format!("{:<12} {}{} {:3}%", label, bar, pad, pct);
-            let line = Line::from(Span::styled(text, Style::default().fg(self.color)));
+            let color = Self::frame_color(*proportion);
+            let line = Line::from(Span::styled(text, Style::default().fg(color)));
             frame.render_widget(Paragraph::new(line), rows[i]);
         }
     }

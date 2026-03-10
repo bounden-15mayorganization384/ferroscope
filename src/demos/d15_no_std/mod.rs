@@ -394,6 +394,19 @@ impl Demo for NoStdDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What does `#![no_std]` tell the Rust compiler?",
+            [
+                "Disable all optimizations",
+                "Don't link the standard library",
+                "Disable unsafe code",
+                "Use C runtime only",
+            ],
+            1,
+        ))
+    }
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

@@ -484,6 +484,19 @@ impl Demo for ConcurrencyDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What prevents data races in Rust at compile time?",
+            [
+                "Garbage collector",
+                "The GIL",
+                "Ownership and Send/Sync traits",
+                "Runtime locks",
+            ],
+            2,
+        ))
+    }
 }
 
 #[cfg(test)]

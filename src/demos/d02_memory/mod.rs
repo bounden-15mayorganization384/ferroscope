@@ -372,6 +372,14 @@ impl Demo for MemoryDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "Where does Rust allocate local variables by default?",
+            ["Heap", "Stack", "Static memory", "Register"],
+            1,
+        ))
+    }
 }
 
 #[cfg(test)]

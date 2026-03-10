@@ -3,7 +3,10 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{
+        canvas::{Canvas, Line as CanvasLine, Rectangle},
+        Block, Borders, Paragraph,
+    },
     Frame,
 };
 use std::time::Duration;
@@ -334,14 +337,397 @@ impl Demo for TypeSystemDemo {
             }
         };
 
+        // Split center: code left, dispatch diagram canvas right
+        let center_split = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+            .split(chunks[1]);
+
         frame.render_widget(
             Paragraph::new(lines).block(
                 Block::default()
                     .title("Type System Demo")
                     .borders(Borders::ALL),
             ),
-            chunks[1],
+            center_split[0],
         );
+
+        // ── Type dispatch diagram Canvas ──────────────────────────────────────
+        let active_idx = self.selected_item;
+        let current_step = self.step % STEPS;
+
+        let diagram = Canvas::default()
+            .block(
+                Block::default()
+                    .title("Dispatch Diagram")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::HEAP_BLUE)),
+            )
+            .x_bounds([0.0, 100.0])
+            .y_bounds([0.0, 100.0])
+            .marker(ratatui::symbols::Marker::Braille)
+            .paint(move |ctx| {
+                match current_step {
+                    0 => {
+                        // Static dispatch fan: T:Shape → Circle, Rectangle, Triangle
+                        let targets = [
+                            (80.0_f64, 80.0_f64, "Circle", theme::SAFE_GREEN),
+                            (80.0_f64, 50.0_f64, "Rectangle", theme::SAFE_GREEN),
+                            (80.0_f64, 20.0_f64, "Triangle", theme::SAFE_GREEN),
+                        ];
+                        // Source box
+                        ctx.draw(&Rectangle {
+                            x: 5.0,
+                            y: 42.0,
+                            width: 24.0,
+                            height: 16.0,
+                            color: theme::BORROW_YELLOW,
+                        });
+                        ctx.print(
+                            7.0,
+                            50.0,
+                            Span::styled("T: Shape", Style::default().fg(theme::BORROW_YELLOW)),
+                        );
+
+                        for (idx, &(tx, ty, label, _)) in targets.iter().enumerate() {
+                            let line_color = if idx == active_idx % 3 {
+                                theme::SAFE_GREEN
+                            } else {
+                                theme::TEXT_DIM
+                            };
+                            ctx.draw(&CanvasLine {
+                                x1: 29.0,
+                                y1: 50.0,
+                                x2: tx,
+                                y2: ty + 7.0,
+                                color: line_color,
+                            });
+                            ctx.draw(&Rectangle {
+                                x: tx - 1.0,
+                                y: ty,
+                                width: 20.0,
+                                height: 10.0,
+                                color: line_color,
+                            });
+                            ctx.print(
+                                tx + 1.0,
+                                ty + 4.0,
+                                Span::styled(label, Style::default().fg(line_color)),
+                            );
+                        }
+                        ctx.print(
+                            25.0,
+                            12.0,
+                            Span::styled("zero overhead", Style::default().fg(theme::TEXT_DIM)),
+                        );
+                        ctx.print(
+                            22.0,
+                            6.0,
+                            Span::styled("monomorphized", Style::default().fg(theme::TEXT_DIM)),
+                        );
+                    }
+                    1 => {
+                        // Monomorphization: 1 generic → 3 concrete copies
+                        ctx.draw(&Rectangle {
+                            x: 30.0,
+                            y: 80.0,
+                            width: 40.0,
+                            height: 12.0,
+                            color: theme::HEAP_BLUE,
+                        });
+                        ctx.print(
+                            35.0,
+                            86.0,
+                            Span::styled("fn largest<T>", Style::default().fg(theme::HEAP_BLUE)),
+                        );
+
+                        let copies = [
+                            (5.0_f64, 50.0_f64, "largest<i32>"),
+                            (33.0_f64, 50.0_f64, "largest<f64>"),
+                            (60.0_f64, 50.0_f64, "largest<char>"),
+                        ];
+                        for (cx, cy, label) in copies {
+                            let inline_color = if cx == 5.0 && active_idx % 3 == 0
+                                || cx == 33.0 && active_idx % 3 == 1
+                                || cx == 60.0 && active_idx % 3 == 2
+                            {
+                                theme::SAFE_GREEN
+                            } else {
+                                theme::TEXT_DIM
+                            };
+                            ctx.draw(&CanvasLine {
+                                x1: 50.0,
+                                y1: 80.0,
+                                x2: cx + 15.0,
+                                y2: 65.0,
+                                color: inline_color,
+                            });
+                            ctx.draw(&Rectangle {
+                                x: cx,
+                                y: cy,
+                                width: 28.0,
+                                height: 12.0,
+                                color: inline_color,
+                            });
+                            ctx.print(
+                                cx + 2.0,
+                                cy + 5.0,
+                                Span::styled(label, Style::default().fg(inline_color)),
+                            );
+                        }
+                        ctx.print(
+                            20.0,
+                            8.0,
+                            Span::styled(
+                                "compile-time specialization",
+                                Style::default().fg(theme::TEXT_DIM),
+                            ),
+                        );
+                    }
+                    2 => {
+                        // Enum sum type: variants as stacked boxes
+                        let variants = [
+                            (20.0_f64, 75.0_f64, "Circle(f64)", theme::STACK_CYAN),
+                            (20.0_f64, 55.0_f64, "Rectangle(f64,f64)", theme::STACK_CYAN),
+                            (
+                                20.0_f64,
+                                35.0_f64,
+                                "Triangle(f64,f64,f64)",
+                                theme::STACK_CYAN,
+                            ),
+                        ];
+                        ctx.draw(&Rectangle {
+                            x: 5.0,
+                            y: 30.0,
+                            width: 90.0,
+                            height: 62.0,
+                            color: theme::TEXT_DIM,
+                        });
+                        ctx.print(
+                            35.0,
+                            94.0,
+                            Span::styled("enum Shape", Style::default().fg(theme::BORROW_YELLOW)),
+                        );
+                        for (i, &(vx, vy, label, color)) in variants.iter().enumerate() {
+                            let c = if i == active_idx % 3 {
+                                color
+                            } else {
+                                theme::TEXT_DIM
+                            };
+                            ctx.draw(&Rectangle {
+                                x: vx,
+                                y: vy,
+                                width: 60.0,
+                                height: 12.0,
+                                color: c,
+                            });
+                            ctx.print(
+                                vx + 3.0,
+                                vy + 5.0,
+                                Span::styled(label, Style::default().fg(c)),
+                            );
+                        }
+                        ctx.print(
+                            10.0,
+                            10.0,
+                            Span::styled(
+                                "exhaustive match required",
+                                Style::default().fg(theme::BORROW_YELLOW),
+                            ),
+                        );
+                    }
+                    3 => {
+                        // Newtype: Meters vs Feet — distinct boxes with X
+                        ctx.draw(&Rectangle {
+                            x: 5.0,
+                            y: 55.0,
+                            width: 35.0,
+                            height: 20.0,
+                            color: theme::SAFE_GREEN,
+                        });
+                        ctx.print(
+                            10.0,
+                            65.0,
+                            Span::styled("Meters(f64)", Style::default().fg(theme::SAFE_GREEN)),
+                        );
+
+                        ctx.draw(&Rectangle {
+                            x: 60.0,
+                            y: 55.0,
+                            width: 35.0,
+                            height: 20.0,
+                            color: theme::CRAB_RED,
+                        });
+                        ctx.print(
+                            65.0,
+                            65.0,
+                            Span::styled("Feet(f64)", Style::default().fg(theme::CRAB_RED)),
+                        );
+
+                        // X mark between them
+                        ctx.draw(&CanvasLine {
+                            x1: 40.0,
+                            y1: 57.0,
+                            x2: 60.0,
+                            y2: 73.0,
+                            color: theme::CRAB_RED,
+                        });
+                        ctx.draw(&CanvasLine {
+                            x1: 40.0,
+                            y1: 73.0,
+                            x2: 60.0,
+                            y2: 57.0,
+                            color: theme::CRAB_RED,
+                        });
+                        ctx.print(
+                            20.0,
+                            25.0,
+                            Span::styled(
+                                "type system prevents mixing",
+                                Style::default().fg(theme::CRAB_RED),
+                            ),
+                        );
+                        ctx.print(
+                            15.0,
+                            15.0,
+                            Span::styled(
+                                "compile error: Meters + Feet",
+                                Style::default().fg(theme::TEXT_DIM),
+                            ),
+                        );
+                    }
+                    4 => {
+                        // Associated types: Iterator → Item
+                        ctx.draw(&Rectangle {
+                            x: 10.0,
+                            y: 75.0,
+                            width: 35.0,
+                            height: 16.0,
+                            color: theme::BORROW_YELLOW,
+                        });
+                        ctx.print(
+                            14.0,
+                            83.0,
+                            Span::styled("Iterator", Style::default().fg(theme::BORROW_YELLOW)),
+                        );
+                        ctx.print(
+                            14.0,
+                            78.0,
+                            Span::styled("type Item", Style::default().fg(theme::SAFE_GREEN)),
+                        );
+
+                        // Concrete impls
+                        let impls = [
+                            (
+                                55.0_f64,
+                                80.0_f64,
+                                "Vec<String>",
+                                "Item=String",
+                                theme::STACK_CYAN,
+                            ),
+                            (
+                                55.0_f64,
+                                55.0_f64,
+                                "Vec<u32>",
+                                "Item=u32",
+                                theme::SAFE_GREEN,
+                            ),
+                            (
+                                55.0_f64,
+                                30.0_f64,
+                                "Range<i32>",
+                                "Item=i32",
+                                theme::HEAP_BLUE,
+                            ),
+                        ];
+                        for (i, &(ix, iy, iname, item, color)) in impls.iter().enumerate() {
+                            let c = if i == active_idx % 3 {
+                                color
+                            } else {
+                                theme::TEXT_DIM
+                            };
+                            ctx.draw(&CanvasLine {
+                                x1: 45.0,
+                                y1: 83.0,
+                                x2: ix,
+                                y2: iy + 7.0,
+                                color: c,
+                            });
+                            ctx.draw(&Rectangle {
+                                x: ix,
+                                y: iy,
+                                width: 38.0,
+                                height: 14.0,
+                                color: c,
+                            });
+                            ctx.print(
+                                ix + 2.0,
+                                iy + 9.0,
+                                Span::styled(iname, Style::default().fg(c)),
+                            );
+                            ctx.print(
+                                ix + 2.0,
+                                iy + 3.0,
+                                Span::styled(item, Style::default().fg(c)),
+                            );
+                        }
+                    }
+                    _ => {
+                        // Pattern matching: decision tree
+                        ctx.draw(&Rectangle {
+                            x: 30.0,
+                            y: 82.0,
+                            width: 40.0,
+                            height: 12.0,
+                            color: theme::RUST_ORANGE,
+                        });
+                        ctx.print(
+                            34.0,
+                            88.0,
+                            Span::styled("match value", Style::default().fg(theme::RUST_ORANGE)),
+                        );
+
+                        let arms = [
+                            (5.0_f64, 62.0_f64, "negative", theme::CRAB_RED),
+                            (35.0_f64, 62.0_f64, "zero", theme::BORROW_YELLOW),
+                            (65.0_f64, 62.0_f64, "positive", theme::SAFE_GREEN),
+                        ];
+                        let active = active_idx % 3;
+                        for (i, &(ax, ay, label, color)) in arms.iter().enumerate() {
+                            let c = if i == active { color } else { theme::TEXT_DIM };
+                            ctx.draw(&CanvasLine {
+                                x1: 50.0,
+                                y1: 82.0,
+                                x2: ax + 15.0,
+                                y2: 76.0,
+                                color: c,
+                            });
+                            ctx.draw(&Rectangle {
+                                x: ax,
+                                y: ay,
+                                width: 28.0,
+                                height: 12.0,
+                                color: c,
+                            });
+                            ctx.print(
+                                ax + 3.0,
+                                ay + 5.0,
+                                Span::styled(label, Style::default().fg(c)),
+                            );
+                        }
+                        ctx.print(
+                            8.0,
+                            15.0,
+                            Span::styled(
+                                "exhaustive — no missing arms",
+                                Style::default().fg(theme::TEXT_DIM),
+                            ),
+                        );
+                    }
+                }
+            });
+
+        frame.render_widget(diagram, center_split[1]);
 
         frame.render_widget(
             Paragraph::new(step_explanation(self.step))
@@ -393,6 +779,33 @@ impl Demo for TypeSystemDemo {
 
     fn speed(&self) -> u8 {
         self.speed
+    }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What is the key difference between static and dynamic dispatch in Rust?",
+            [
+                "Dynamic is faster",
+                "Static monomorphizes at compile time",
+                "Static requires vtables",
+                "Dynamic prevents abstraction",
+            ],
+            1,
+        ))
+    }
+
+    fn supports_step_control(&self) -> bool {
+        true
+    }
+
+    fn step_forward(&mut self) {
+        self.step = (self.step + 1) % STEPS;
+        self.step_timer = 0.0;
+    }
+
+    fn step_back(&mut self) {
+        self.step = (self.step + STEPS - 1) % STEPS;
+        self.step_timer = 0.0;
     }
 }
 

@@ -317,6 +317,34 @@ impl Demo for OwnershipDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "After `let s2 = s1;` with a String, what happens to s1?",
+            [
+                "s1 is copied",
+                "s1 is moved and invalid",
+                "s1 is borrowed",
+                "s1 is cloned",
+            ],
+            1,
+        ))
+    }
+
+    fn supports_step_control(&self) -> bool {
+        true
+    }
+
+    fn step_forward(&mut self) {
+        self.step = (self.step + 1) % STEPS;
+        self.step_timer = 0.0;
+    }
+
+    fn step_back(&mut self) {
+        self.step = (self.step + STEPS - 1) % STEPS;
+        self.step_timer = 0.0;
+    }
+
     fn toggle_vsmode(&mut self) {
         self.toggle_vs_mode();
     }

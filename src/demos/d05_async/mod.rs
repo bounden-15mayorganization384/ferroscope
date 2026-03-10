@@ -3,9 +3,13 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{
+        canvas::{Canvas, Circle, Line as CanvasLine},
+        Block, Borders, List, ListItem, Paragraph,
+    },
     Frame,
 };
+use std::f64::consts::PI;
 use std::time::Duration;
 
 /// State of a simulated async task in the executor model.
@@ -78,6 +82,7 @@ pub struct AsyncDemo {
     pub completed_count: u64,
     pub total_polls: u64,
     pub cycle_count: u64,
+    pub wheel_angle: f64,
 }
 
 impl AsyncDemo {
@@ -91,6 +96,7 @@ impl AsyncDemo {
             completed_count: 0,
             total_polls: 0,
             cycle_count: 0,
+            wheel_angle: 0.0,
         };
         d.init_tasks();
         d
@@ -128,6 +134,7 @@ impl AsyncDemo {
         0.6 / self.speed as f64
     }
 
+    #[allow(dead_code)]
     pub fn pending_count(&self) -> usize {
         self.tasks
             .iter()
@@ -135,6 +142,7 @@ impl AsyncDemo {
             .count()
     }
 
+    #[allow(dead_code)]
     pub fn polling_count(&self) -> usize {
         self.tasks
             .iter()
@@ -142,6 +150,7 @@ impl AsyncDemo {
             .count()
     }
 
+    #[allow(dead_code)]
     pub fn ready_count(&self) -> usize {
         self.tasks
             .iter()
@@ -149,6 +158,7 @@ impl AsyncDemo {
             .count()
     }
 
+    #[allow(dead_code)]
     pub fn done_count(&self) -> usize {
         self.tasks
             .iter()
@@ -210,6 +220,7 @@ impl Demo for AsyncDemo {
         }
         self.tick_count = self.tick_count.wrapping_add(1);
         self.tick_acc += dt.as_secs_f64();
+        self.wheel_angle += dt.as_secs_f64() * self.speed as f64 * 0.8;
         if self.tick_acc >= self.cycle_period_secs() {
             self.tick_acc = 0.0;
             self.run_cycle();
@@ -288,56 +299,78 @@ impl Demo for AsyncDemo {
             mid[0],
         );
 
-        // Executor state breakdown
-        let expl_lines = vec![
-            Line::from(Span::styled(
-                "State Machine Model:",
-                Style::default()
-                    .fg(theme::BORROW_YELLOW)
-                    .add_modifier(Modifier::BOLD),
-            )),
-            Line::from(""),
-            Line::from(Span::styled(
-                format!("  Pending : {:2}", self.pending_count()),
-                Style::default().fg(theme::TEXT_DIM),
-            )),
-            Line::from(Span::styled(
-                format!("  Polling : {:2}", self.polling_count()),
-                Style::default().fg(theme::BORROW_YELLOW),
-            )),
-            Line::from(Span::styled(
-                format!("  Ready   : {:2}", self.ready_count()),
-                Style::default().fg(theme::SAFE_GREEN),
-            )),
-            Line::from(Span::styled(
-                format!("  Done    : {:2}", self.done_count()),
-                Style::default().fg(theme::ASYNC_PURPLE),
-            )),
-            Line::from(""),
-            Line::from(Span::styled(
-                "Future::poll() -> Poll::Pending",
-                theme::dim_style(),
-            )),
-            Line::from(Span::styled(
-                "Future::poll() -> Poll::Ready(v)",
-                theme::dim_style(),
-            )),
-            Line::from(Span::styled(
-                "Waker notifies executor to re-poll",
-                theme::dim_style(),
-            )),
-        ];
-        frame.render_widget(
-            Paragraph::new(expl_lines)
-                .block(
-                    Block::default()
-                        .title("Executor State")
-                        .borders(Borders::ALL)
-                        .border_style(Style::default().fg(theme::HEAP_BLUE)),
-                )
-                .wrap(ratatui::widgets::Wrap { trim: true }),
-            mid[1],
-        );
+        // Executor Wheel — Canvas showing 6 task circles arranged in a ring
+        let tasks_snapshot: Vec<(f64, ratatui::style::Color)> = self
+            .tasks
+            .iter()
+            .enumerate()
+            .map(|(i, t)| (i as f64, t.state.color()))
+            .collect();
+        let wheel_angle = self.wheel_angle;
+        let cycle_count = self.cycle_count;
+
+        let wheel = Canvas::default()
+            .block(
+                Block::default()
+                    .title("Executor Wheel")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::HEAP_BLUE)),
+            )
+            .x_bounds([-55.0, 55.0])
+            .y_bounds([-55.0, 55.0])
+            .marker(ratatui::symbols::Marker::Braille)
+            .paint(move |ctx| {
+                let center_x = 0.0_f64;
+                let center_y = 0.0_f64;
+                let ring_r = 30.0_f64;
+                let task_r = 7.0_f64;
+                let n = tasks_snapshot.len() as f64;
+
+                // Draw task circles
+                for &(i, color) in &tasks_snapshot {
+                    let angle = i * 2.0 * PI / n - PI / 2.0;
+                    let tx = center_x + ring_r * angle.cos();
+                    let ty = center_y + ring_r * angle.sin();
+                    ctx.draw(&Circle {
+                        x: tx,
+                        y: ty,
+                        radius: task_r,
+                        color,
+                    });
+                }
+
+                // Reactor needle sweeps around
+                let needle_angle = (wheel_angle % (2.0 * PI)) - PI / 2.0;
+                let nx = center_x + (ring_r + 10.0) * needle_angle.cos();
+                let ny = center_y + (ring_r + 10.0) * needle_angle.sin();
+                ctx.draw(&CanvasLine {
+                    x1: center_x,
+                    y1: center_y,
+                    x2: nx,
+                    y2: ny,
+                    color: theme::RUST_ORANGE,
+                });
+
+                // Center hub
+                ctx.draw(&Circle {
+                    x: center_x,
+                    y: center_y,
+                    radius: 4.0,
+                    color: theme::TEXT_DIM,
+                });
+
+                // Cycle counter
+                ctx.print(
+                    -20.0,
+                    -48.0,
+                    Span::styled(
+                        format!("cycle #{}", cycle_count),
+                        Style::default().fg(theme::ASYNC_PURPLE),
+                    ),
+                );
+            });
+
+        frame.render_widget(wheel, mid[1]);
 
         // Stats bar
         let stats = Line::from(vec![
@@ -381,6 +414,7 @@ impl Demo for AsyncDemo {
     fn reset(&mut self) {
         self.tick_count = 0;
         self.tick_acc = 0.0;
+        self.wheel_angle = 0.0;
         self.paused = false;
         self.init_tasks();
     }
@@ -395,6 +429,14 @@ impl Demo for AsyncDemo {
     }
     fn speed(&self) -> u8 {
         self.speed
+    }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What does an `async fn` return in Rust?",
+            ["A thread", "A Future", "A Result", "An iterator"],
+            1,
+        ))
     }
 }
 

@@ -3,7 +3,10 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{
+        canvas::{Canvas, Line as CanvasLine, Rectangle},
+        Block, Borders, Paragraph,
+    },
     Frame,
 };
 use std::time::Duration;
@@ -328,14 +331,243 @@ impl Demo for LifetimesDemo {
             ],
         };
 
+        // Split center panel: code left, Gantt chart right
+        let mid = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(58), Constraint::Percentage(42)])
+            .split(chunks[1]);
+
         frame.render_widget(
             Paragraph::new(content_lines).block(
                 Block::default()
                     .title("Lifetimes Demo")
                     .borders(Borders::ALL),
             ),
-            chunks[1],
+            mid[0],
         );
+
+        // ── Canvas Gantt chart ────────────────────────────────────────────────
+        let step = self.step % STEPS;
+        let cursor_x = (self.step_timer / self.step_duration_secs() * 100.0).min(99.5);
+
+        let gantt = Canvas::default()
+            .block(
+                Block::default()
+                    .title("Lifetime Timeline")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::BORROW_YELLOW)),
+            )
+            .x_bounds([-2.0, 102.0])
+            .y_bounds([0.0, 12.0])
+            .marker(ratatui::symbols::Marker::Braille)
+            .paint(move |ctx| {
+                // Timeline labels
+                ctx.print(
+                    -1.5,
+                    9.5,
+                    Span::styled("'r", Style::default().fg(theme::ASYNC_PURPLE)),
+                );
+                ctx.print(
+                    -1.5,
+                    6.5,
+                    Span::styled("'s", Style::default().fg(theme::STACK_CYAN)),
+                );
+
+                match step {
+                    0 => {
+                        // Scopes: just outer scope bar
+                        ctx.draw(&Rectangle {
+                            x: 0.0,
+                            y: 5.0,
+                            width: 100.0,
+                            height: 2.0,
+                            color: theme::STACK_CYAN,
+                        });
+                        ctx.print(
+                            15.0,
+                            5.5,
+                            Span::styled("outer scope", Style::default().fg(theme::TEXT_PRIMARY)),
+                        );
+                    }
+                    1 => {
+                        // Valid borrow: s and r both live same scope
+                        ctx.draw(&Rectangle {
+                            x: 0.0,
+                            y: 4.5,
+                            width: 100.0,
+                            height: 1.5,
+                            color: theme::SAFE_GREEN,
+                        });
+                        ctx.draw(&Rectangle {
+                            x: 15.0,
+                            y: 7.5,
+                            width: 70.0,
+                            height: 1.5,
+                            color: theme::SAFE_GREEN,
+                        });
+                        ctx.print(
+                            30.0,
+                            5.0,
+                            Span::styled("'s lives here", Style::default().fg(theme::TEXT_PRIMARY)),
+                        );
+                        ctx.print(
+                            28.0,
+                            8.0,
+                            Span::styled(
+                                "r borrows s — safe",
+                                Style::default().fg(theme::TEXT_PRIMARY),
+                            ),
+                        );
+                    }
+                    2 => {
+                        // Dangling: s ends at 55, r continues (CRAB_RED after 55)
+                        ctx.draw(&Rectangle {
+                            x: 0.0,
+                            y: 4.5,
+                            width: 55.0,
+                            height: 1.5,
+                            color: theme::SAFE_GREEN,
+                        });
+                        // r: valid portion
+                        ctx.draw(&Rectangle {
+                            x: 5.0,
+                            y: 7.5,
+                            width: 50.0,
+                            height: 1.5,
+                            color: theme::BORROW_YELLOW,
+                        });
+                        // r: dangling portion (past where s dropped)
+                        ctx.draw(&Rectangle {
+                            x: 55.0,
+                            y: 7.5,
+                            width: 40.0,
+                            height: 1.5,
+                            color: theme::CRAB_RED,
+                        });
+                        // drop marker
+                        ctx.draw(&CanvasLine {
+                            x1: 55.0,
+                            y1: 0.0,
+                            x2: 55.0,
+                            y2: 12.0,
+                            color: theme::CRAB_RED,
+                        });
+                        ctx.print(
+                            56.0,
+                            2.5,
+                            Span::styled("s dropped!", Style::default().fg(theme::CRAB_RED)),
+                        );
+                        ctx.print(
+                            57.0,
+                            8.0,
+                            Span::styled("dangling!", Style::default().fg(theme::CRAB_RED)),
+                        );
+                    }
+                    3 => {
+                        // Lifetime annotations: 'a spans both r and s
+                        ctx.draw(&Rectangle {
+                            x: 10.0,
+                            y: 4.5,
+                            width: 80.0,
+                            height: 1.5,
+                            color: theme::BORROW_YELLOW,
+                        });
+                        ctx.draw(&Rectangle {
+                            x: 10.0,
+                            y: 7.5,
+                            width: 80.0,
+                            height: 1.5,
+                            color: theme::BORROW_YELLOW,
+                        });
+                        ctx.print(
+                            20.0,
+                            5.0,
+                            Span::styled(
+                                "'a (s: &'a str)",
+                                Style::default().fg(theme::BORROW_YELLOW),
+                            ),
+                        );
+                        ctx.print(
+                            20.0,
+                            8.0,
+                            Span::styled(
+                                "'a (r: &'a str)",
+                                Style::default().fg(theme::BORROW_YELLOW),
+                            ),
+                        );
+                        // Bracket showing 'a span
+                        ctx.draw(&CanvasLine {
+                            x1: 10.0,
+                            y1: 1.5,
+                            x2: 90.0,
+                            y2: 1.5,
+                            color: theme::RUST_ORANGE,
+                        });
+                        ctx.print(
+                            40.0,
+                            2.0,
+                            Span::styled(
+                                "'a outlives both",
+                                Style::default().fg(theme::RUST_ORANGE),
+                            ),
+                        );
+                    }
+                    _ => {
+                        // 'static: full program lifetime
+                        ctx.draw(&Rectangle {
+                            x: 0.0,
+                            y: 5.0,
+                            width: 100.0,
+                            height: 2.0,
+                            color: theme::ASYNC_PURPLE,
+                        });
+                        ctx.print(
+                            20.0,
+                            5.5,
+                            Span::styled(
+                                "'static — entire program",
+                                Style::default().fg(theme::TEXT_PRIMARY),
+                            ),
+                        );
+                        // Arrow showing extension beyond program end
+                        ctx.draw(&CanvasLine {
+                            x1: 98.0,
+                            y1: 6.0,
+                            x2: 101.0,
+                            y2: 6.0,
+                            color: theme::ASYNC_PURPLE,
+                        });
+                    }
+                }
+
+                // Now cursor (sweeps left to right with step timer)
+                ctx.draw(&CanvasLine {
+                    x1: cursor_x,
+                    y1: 0.0,
+                    x2: cursor_x,
+                    y2: 12.0,
+                    color: theme::RUST_ORANGE,
+                });
+                // x-axis ticks
+                for tick in [0.0_f64, 25.0, 50.0, 75.0, 100.0] {
+                    ctx.draw(&CanvasLine {
+                        x1: tick,
+                        y1: 0.0,
+                        x2: tick,
+                        y2: 0.5,
+                        color: theme::TEXT_DIM,
+                    });
+                }
+                ctx.draw(&CanvasLine {
+                    x1: 0.0,
+                    y1: 0.3,
+                    x2: 100.0,
+                    y2: 0.3,
+                    color: theme::TEXT_DIM,
+                });
+            });
+
+        frame.render_widget(gantt, mid[1]);
 
         frame.render_widget(
             Paragraph::new(step_explanation(self.step))
@@ -388,6 +620,33 @@ impl Demo for LifetimesDemo {
 
     fn speed(&self) -> u8 {
         self.speed
+    }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What does `'a: 'b` mean in a lifetime bound?",
+            [
+                "'a equals 'b",
+                "'a outlives 'b",
+                "'b outlives 'a",
+                "Both lifetimes are static",
+            ],
+            1,
+        ))
+    }
+
+    fn supports_step_control(&self) -> bool {
+        true
+    }
+
+    fn step_forward(&mut self) {
+        self.step = (self.step + 1) % STEPS;
+        self.step_timer = 0.0;
+    }
+
+    fn step_back(&mut self) {
+        self.step = (self.step + STEPS - 1) % STEPS;
+        self.step_timer = 0.0;
     }
 }
 

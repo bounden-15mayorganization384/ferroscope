@@ -2,6 +2,7 @@ pub mod footer;
 pub mod header;
 pub mod layout;
 pub mod nav;
+pub mod quiz;
 pub mod widgets;
 
 use ratatui::{
@@ -20,11 +21,24 @@ pub fn draw(frame: &mut Frame, app: &App, registry: &DemoRegistry) {
 
     header::render_header(frame, layout.header, app);
     nav::render_nav(frame, layout.nav, app, registry);
-    registry.render_current(app.current_demo, frame, layout.content);
-    footer::render_footer(frame, layout.footer, app);
+
+    // Demo content with optional transition wipe
+    if app.transition_frames > 0 {
+        render_transition_wipe(frame, layout.content, app, registry);
+    } else {
+        registry.render_current(app.current_demo, frame, layout.content);
+    }
+
+    footer::render_footer(frame, layout.footer, app, registry);
 
     if app.show_explanation {
         render_explanation_panel(frame, layout.content, app, registry);
+    }
+
+    if app.quiz_active {
+        if let Some((question, options, correct)) = registry.quiz_current(app.current_demo) {
+            quiz::render_quiz(frame, area, app, question, &options, correct);
+        }
     }
 
     if app.show_help {
@@ -36,6 +50,9 @@ pub fn draw(frame: &mut Frame, app: &App, registry: &DemoRegistry) {
             render_achievement_overlay(frame, area, name);
         }
     }
+
+    // Particle burst — written directly to the frame buffer last so they appear on top
+    render_particles(frame, app);
 }
 
 fn render_explanation_panel(frame: &mut Frame, area: Rect, app: &App, registry: &DemoRegistry) {
@@ -79,7 +96,7 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         Line::from("  -> / l      Next demo"),
         Line::from("  1-9, 0      Jump to demo 1-10"),
         Line::from("  a, b, c     Jump to demo 11, 12, 13"),
-        Line::from("  d, f        Jump to demo 14, 15"),
+        Line::from("  d, f, g     Jump to demo 14, 15, 16"),
         Line::from(""),
         Line::from(Span::styled(
             "Controls",
@@ -90,6 +107,8 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         Line::from("  Space       Pause / Resume"),
         Line::from("  R           Reset current demo"),
         Line::from("  V           Toggle vs-mode (Rust vs C++)"),
+        Line::from("  N / P       Step forward / back (when available)"),
+        Line::from("  T           Quiz mode (when available)"),
         Line::from("  +           Increase speed"),
         Line::from("  -           Decrease speed"),
         Line::from(""),
@@ -161,6 +180,50 @@ fn render_achievement_overlay(frame: &mut Frame, area: Rect, achievement_name: &
 
     frame.render_widget(Clear, popup);
     frame.render_widget(para, popup);
+}
+
+/// Horizontal wipe transition: slides the new demo in from the left.
+fn render_transition_wipe(frame: &mut Frame, area: Rect, app: &App, registry: &DemoRegistry) {
+    // Render the incoming (current) demo fully
+    registry.render_current(app.current_demo, frame, area);
+
+    // Cover the not-yet-revealed right portion with a blank curtain
+    if area.width == 0 || app.transition_frames == 0 {
+        return;
+    }
+    let revealed = area
+        .width
+        .saturating_mul(10u16.saturating_sub(app.transition_frames as u16))
+        / 10;
+    let curtain_x = area.x + revealed;
+    let curtain_w = area.width.saturating_sub(revealed);
+    if curtain_w > 0 {
+        let curtain = Rect::new(curtain_x, area.y, curtain_w, area.height);
+        frame.render_widget(Clear, curtain);
+        // Draw a thin glowing edge line at the reveal boundary
+        if revealed > 0 {
+            let edge = Rect::new(curtain_x.saturating_sub(1), area.y, 1, area.height);
+            let edge_lines: Vec<Line> = (0..area.height)
+                .map(|_| Line::from(Span::styled("▌", Style::default().fg(theme::RUST_ORANGE))))
+                .collect();
+            frame.render_widget(Paragraph::new(edge_lines), edge);
+        }
+    }
+}
+
+/// Render particle bursts directly into the frame buffer.
+fn render_particles(frame: &mut Frame, app: &App) {
+    let area = frame.area();
+    let buf = frame.buffer_mut();
+    for p in &app.particles {
+        let x = p.x as u16;
+        let y = p.y as u16;
+        if x < area.width && y < area.height {
+            let cell = &mut buf[(x, y)];
+            cell.set_symbol(&p.ch.to_string());
+            cell.set_style(Style::default().fg(p.color));
+        }
+    }
 }
 
 #[cfg(test)]

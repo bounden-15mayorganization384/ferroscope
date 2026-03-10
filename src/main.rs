@@ -10,7 +10,10 @@ use std::time::Duration;
 
 use anyhow::Result;
 use crossterm::{
-    event::{self, Event, KeyEventKind},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind, MouseButton,
+        MouseEventKind,
+    },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -64,7 +67,7 @@ fn parse_args() -> CliArgs {
 fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
     Ok(terminal)
@@ -72,7 +75,11 @@ fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
 
 fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
     terminal.show_cursor()?;
     Ok(())
 }
@@ -141,26 +148,107 @@ fn run_app(
         terminal.draw(|f| ui::draw(f, app, registry))?;
 
         if event::poll(tick_rate)? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    // Feed raw key to Konami tracker
-                    if app.check_konami(key.code) {
-                        // Konami activated — handled via app.konami_active
-                    }
-
-                    if let Some(app_event) = key_event_to_app_event(key) {
-                        let is_reset = app_event == events::AppEvent::Reset;
-                        let is_vsmode = app_event == events::AppEvent::ToggleVsMode;
-                        let current = app.current_demo;
-                        app.handle_event(app_event);
-                        if is_reset {
-                            registry.reset_current(current);
+            match event::read()? {
+                Event::Key(key) => {
+                    if key.kind == KeyEventKind::Press {
+                        // Feed raw key to Konami tracker
+                        if app.check_konami(key.code) {
+                            // Konami activated — handled via app.konami_active
                         }
-                        if is_vsmode {
-                            registry.toggle_vsmode_current(current);
+
+                        // When quiz overlay is active, keys 1-4 become quiz answers
+                        let quiz_event: Option<events::AppEvent> = if app.quiz_active {
+                            match key.code {
+                                crossterm::event::KeyCode::Char('1') => {
+                                    Some(events::AppEvent::QuizAnswer(0))
+                                }
+                                crossterm::event::KeyCode::Char('2') => {
+                                    Some(events::AppEvent::QuizAnswer(1))
+                                }
+                                crossterm::event::KeyCode::Char('3') => {
+                                    Some(events::AppEvent::QuizAnswer(2))
+                                }
+                                crossterm::event::KeyCode::Char('4') => {
+                                    Some(events::AppEvent::QuizAnswer(3))
+                                }
+                                _ => None,
+                            }
+                        } else {
+                            None
+                        };
+
+                        if let Some(app_event) = quiz_event.or_else(|| key_event_to_app_event(key))
+                        {
+                            let is_reset = app_event == events::AppEvent::Reset;
+                            let is_vsmode = app_event == events::AppEvent::ToggleVsMode;
+                            let is_step_fwd = app_event == events::AppEvent::StepForward;
+                            let is_step_back = app_event == events::AppEvent::StepBack;
+                            // Extract quiz answer index before consuming the event
+                            let quiz_answer_idx =
+                                if let events::AppEvent::QuizAnswer(i) = &app_event {
+                                    Some(*i)
+                                } else {
+                                    None
+                                };
+                            let current = app.current_demo;
+                            app.handle_event(app_event);
+                            if is_reset {
+                                registry.reset_current(current);
+                            }
+                            if is_vsmode {
+                                registry.toggle_vsmode_current(current);
+                            }
+                            if is_step_fwd && registry.supports_step_control(current) {
+                                registry.step_forward_current(current);
+                            }
+                            if is_step_back && registry.supports_step_control(current) {
+                                registry.step_back_current(current);
+                            }
+                            // Score quiz answer with access to the correct index
+                            if let Some(user_idx) = quiz_answer_idx {
+                                if app.quiz_active {
+                                    if let Some((_, _, correct)) = registry.quiz_current(current) {
+                                        let is_correct = user_idx == correct;
+                                        app.quiz_last_result = Some(is_correct);
+                                        if is_correct {
+                                            app.quiz_correct = app.quiz_correct.saturating_add(1);
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+                Event::Mouse(m) => {
+                    use ratatui::layout::Rect;
+                    let (cols, rows) = crossterm::terminal::size().unwrap_or((80, 24));
+                    let nav_rect = ui::layout::app_layout(Rect::new(0, 0, cols, rows)).nav;
+                    match m.kind {
+                        MouseEventKind::Down(MouseButton::Left) => {
+                            if let Some(idx) =
+                                ui::nav::nav_tab_at(m.column, nav_rect, registry.len())
+                            {
+                                app.handle_event(events::AppEvent::SelectDemo(idx));
+                            }
+                        }
+                        MouseEventKind::ScrollUp => {
+                            if app.show_explanation {
+                                app.handle_event(events::AppEvent::ScrollUp);
+                            } else {
+                                app.handle_event(events::AppEvent::SpeedUp);
+                            }
+                        }
+                        MouseEventKind::ScrollDown => {
+                            if app.show_explanation {
+                                app.handle_event(events::AppEvent::ScrollDown);
+                            } else {
+                                app.handle_event(events::AppEvent::SpeedDown);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
             }
         } else {
             let dt = tick_rate;
@@ -209,7 +297,7 @@ fn main() -> Result<()> {
 
     let tick_rate = Duration::from_millis(1000 / cli.fps);
     let mut terminal = setup_terminal()?;
-    let mut app = App::new(15);
+    let mut app = App::new(16);
     let mut registry_mut = registry;
 
     // Tour mode: show_explanation on by default

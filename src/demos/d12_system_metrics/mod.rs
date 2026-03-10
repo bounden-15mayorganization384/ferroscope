@@ -370,6 +370,14 @@ impl Demo for SystemMetricsDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "Which crate provides cross-platform system info in Rust?",
+            ["libc", "sysinfo", "winapi", "nix"],
+            1,
+        ))
+    }
 }
 
 #[cfg(test)]

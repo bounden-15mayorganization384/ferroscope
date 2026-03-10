@@ -555,6 +555,19 @@ impl Demo for PerformanceDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "How does Rust achieve C-comparable performance?",
+            [
+                "JIT compilation",
+                "Ahead-of-time compilation with no GC overhead",
+                "Bytecode VM",
+                "Hardware acceleration",
+            ],
+            1,
+        ))
+    }
 }
 
 /// Format large op counts as e.g. "1.23 B", "456 M", "789 K".

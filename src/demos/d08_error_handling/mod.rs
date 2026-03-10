@@ -3,7 +3,10 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{
+        canvas::{Canvas, Line as CanvasLine, Rectangle},
+        Block, Borders, Paragraph,
+    },
     Frame,
 };
 use std::time::Duration;
@@ -397,14 +400,124 @@ impl Demo for ErrorHandlingDemo {
         };
 
         if self.step % STEPS != 4 {
+            // Split center: code left, propagation diagram canvas right
+            let center_split = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+                .split(chunks[1]);
+
             frame.render_widget(
                 Paragraph::new(content_lines).block(
                     Block::default()
                         .title("Error Handling")
                         .borders(Borders::ALL),
                 ),
-                chunks[1],
+                center_split[0],
             );
+
+            // ── Error propagation canvas ──────────────────────────────────────
+            let chain_depth = self.chain_depth;
+            let current_step = self.step % STEPS;
+
+            let error_canvas = Canvas::default()
+                .block(
+                    Block::default()
+                        .title("Propagation Stack")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(theme::CRAB_RED)),
+                )
+                .x_bounds([0.0, 100.0])
+                .y_bounds([0.0, 100.0])
+                .marker(ratatui::symbols::Marker::Braille)
+                .paint(move |ctx| {
+                    // Draw 5 call frames as stacked boxes
+                    let frame_labels =
+                        ["main()", "level_0()", "level_1()", "level_2()", "level_3()"];
+                    let frame_height = 14.0_f64;
+                    let frame_gap = 2.0_f64;
+                    let frame_x = 10.0_f64;
+                    let frame_w = 80.0_f64;
+
+                    for (i, label) in frame_labels.iter().enumerate() {
+                        // i=0 is at top; box y goes bottom-up
+                        let frame_y = 5.0 + (4 - i) as f64 * (frame_height + frame_gap);
+                        let color = if current_step == 1 {
+                            // Error propagates upward: bottom frame is error source
+                            let triggered_frame = (chain_depth).min(4);
+                            if i == 4 {
+                                theme::CRAB_RED // error origin always red
+                            } else if 4 - i <= triggered_frame {
+                                theme::BORROW_YELLOW // frames error has passed
+                            } else {
+                                theme::TEXT_DIM
+                            }
+                        } else if current_step == 0 {
+                            if i == 4 {
+                                theme::CRAB_RED
+                            } else {
+                                theme::TEXT_DIM
+                            }
+                        } else {
+                            theme::TEXT_DIM
+                        };
+
+                        ctx.draw(&Rectangle {
+                            x: frame_x,
+                            y: frame_y,
+                            width: frame_w,
+                            height: frame_height,
+                            color,
+                        });
+                        ctx.print(
+                            frame_x + 5.0,
+                            frame_y + 5.0,
+                            Span::styled(*label, Style::default().fg(color)),
+                        );
+                    }
+
+                    // Draw upward arrow showing error propagation
+                    if current_step == 1 && chain_depth > 0 {
+                        let triggered = chain_depth.min(4) as f64;
+                        let arrow_bottom =
+                            5.0 + (4.0 - triggered) * (frame_height + frame_gap) + frame_height;
+                        let arrow_top = 5.0 + 4.0 * (frame_height + frame_gap) + frame_height + 3.0;
+                        let arrow_x = frame_x + frame_w / 2.0;
+                        ctx.draw(&CanvasLine {
+                            x1: arrow_x,
+                            y1: arrow_bottom,
+                            x2: arrow_x,
+                            y2: arrow_top.min(95.0),
+                            color: theme::CRAB_RED,
+                        });
+                        // Arrowhead
+                        ctx.draw(&CanvasLine {
+                            x1: arrow_x - 4.0,
+                            y1: arrow_top.min(95.0) - 4.0,
+                            x2: arrow_x,
+                            y2: arrow_top.min(95.0),
+                            color: theme::CRAB_RED,
+                        });
+                        ctx.draw(&CanvasLine {
+                            x1: arrow_x + 4.0,
+                            y1: arrow_top.min(95.0) - 4.0,
+                            x2: arrow_x,
+                            y2: arrow_top.min(95.0),
+                            color: theme::CRAB_RED,
+                        });
+                    }
+
+                    // Legend
+                    ctx.print(
+                        12.0,
+                        1.0,
+                        Span::styled(
+                            "? propagates error upward",
+                            Style::default().fg(theme::TEXT_DIM),
+                        ),
+                    );
+                });
+
+            frame.render_widget(error_canvas, center_split[1]);
         }
 
         let expl_text = match self.step % STEPS {
@@ -466,6 +579,33 @@ impl Demo for ErrorHandlingDemo {
 
     fn speed(&self) -> u8 {
         self.speed
+    }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What does the `?` operator do in a function returning Result?",
+            [
+                "Panics on error",
+                "Propagates the error to the caller",
+                "Logs the error",
+                "Converts to Option",
+            ],
+            1,
+        ))
+    }
+
+    fn supports_step_control(&self) -> bool {
+        true
+    }
+
+    fn step_forward(&mut self) {
+        self.step = (self.step + 1) % STEPS;
+        self.step_timer = 0.0;
+    }
+
+    fn step_back(&mut self) {
+        self.step = (self.step + STEPS - 1) % STEPS;
+        self.step_timer = 0.0;
     }
 }
 

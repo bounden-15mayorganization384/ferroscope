@@ -415,6 +415,14 @@ impl Demo for CargoDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "Where are Rust packages (crates) published?",
+            ["npmjs.com", "crates.io", "PyPI", "Maven Central"],
+            1,
+        ))
+    }
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

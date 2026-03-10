@@ -41,6 +41,20 @@ pub const ACHIEVEMENT_NAMES: &[(&str, &str)] = &[
     ("Rust Evangelist", "Completed the guided tour"),
 ];
 
+// ─── Particle system ──────────────────────────────────────────────────────────
+
+/// A single particle in the achievement burst effect.
+#[derive(Debug, Clone)]
+pub struct Particle {
+    pub x: f32,
+    pub y: f32,
+    pub vx: f32,
+    pub vy: f32,
+    pub ch: char,
+    pub color: ratatui::style::Color,
+    pub age: u8,
+}
+
 #[derive(Debug)]
 pub struct App {
     pub running: bool,
@@ -72,6 +86,18 @@ pub struct App {
 
     // Explanation panel
     pub explanation_scroll: u16,
+
+    // Particle burst (achievement celebrations)
+    pub particles: Vec<Particle>,
+
+    // Demo transition wipe
+    pub transition_frames: u8,
+
+    // Quiz mode
+    pub quiz_active: bool,
+    pub quiz_correct: u8,
+    pub quiz_total: u8,
+    pub quiz_last_result: Option<bool>, // true=correct, false=wrong, None=unanswered
 }
 
 impl App {
@@ -94,6 +120,12 @@ impl App {
             konami_active: false,
             konami_countdown: 0,
             explanation_scroll: 0,
+            particles: Vec::new(),
+            transition_frames: 0,
+            quiz_active: false,
+            quiz_correct: 0,
+            quiz_total: 0,
+            quiz_last_result: None,
         }
     }
 
@@ -127,6 +159,20 @@ impl App {
                     self.explanation_scroll = self.explanation_scroll.saturating_add(1);
                 }
             }
+            AppEvent::StepForward => { /* forwarded to registry externally */ }
+            AppEvent::StepBack => { /* forwarded to registry externally */ }
+            AppEvent::QuizToggle => {
+                if self.quiz_active {
+                    self.quiz_last_result = None;
+                }
+                self.quiz_active = !self.quiz_active;
+            }
+            AppEvent::QuizAnswer(idx) => {
+                if self.quiz_active {
+                    let _ = idx; // correctness checked externally
+                    self.quiz_total = self.quiz_total.saturating_add(1);
+                }
+            }
         }
     }
 
@@ -149,13 +195,16 @@ impl App {
     }
 
     pub fn select_demo(&mut self, idx: usize) {
-        if idx < self.demo_count {
+        if idx < self.demo_count && idx != self.current_demo {
+            self.start_transition();
             self.current_demo = idx;
         }
     }
 
     pub fn tick(&mut self) {
         self.tick_count = self.tick_count.wrapping_add(1);
+        self.tick_particles();
+        self.tick_transition();
         self.fact_tick = self.fact_tick.wrapping_add(1);
         // Advance crab frame every 8 ticks
         if self.tick_count.is_multiple_of(8) {
@@ -199,6 +248,55 @@ impl App {
 
     // ── Exploration tracking ──────────────────────────────────────────────────
 
+    /// Spawn a particle burst at approximate screen coordinates for celebrations.
+    pub fn spawn_particles(&mut self, x: u16, y: u16) {
+        let chars = ['★', '*', '+', '◆', '●', '·', '✦', '✧'];
+        let colors = [
+            ratatui::style::Color::Rgb(222, 99, 29),
+            ratatui::style::Color::Rgb(50, 200, 100),
+            ratatui::style::Color::Rgb(220, 180, 50),
+            ratatui::style::Color::Rgb(150, 80, 220),
+            ratatui::style::Color::Rgb(50, 200, 210),
+            ratatui::style::Color::Rgb(180, 40, 40),
+        ];
+        for i in 0..30u8 {
+            let angle = (i as f32 * 12.0_f32).to_radians();
+            let speed = 0.5 + (i as f32 % 4.0) * 0.4;
+            self.particles.push(Particle {
+                x: x as f32,
+                y: y as f32,
+                vx: angle.cos() * speed,
+                vy: angle.sin() * speed - 1.0,
+                ch: chars[(i as usize) % chars.len()],
+                color: colors[(i as usize) % colors.len()],
+                age: 0,
+            });
+        }
+    }
+
+    /// Update all particles: apply velocity + gravity, increment age, drop expired.
+    pub fn tick_particles(&mut self) {
+        for p in &mut self.particles {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.15;
+            p.age += 1;
+        }
+        self.particles.retain(|p| p.age < 45);
+    }
+
+    /// Begin a horizontal wipe transition to a new demo.
+    pub fn start_transition(&mut self) {
+        self.transition_frames = 10;
+    }
+
+    /// Decrement transition counter each tick until 0.
+    pub fn tick_transition(&mut self) {
+        if self.transition_frames > 0 {
+            self.transition_frames -= 1;
+        }
+    }
+
     /// Mark demo `idx` as visited and check for new achievements.
     pub fn visit(&mut self, idx: usize) {
         if idx >= 32 {
@@ -207,6 +305,7 @@ impl App {
         self.visited_demos |= 1u32 << idx;
         if let Some(name) = self.check_achievements() {
             self.achievement_flash = Some((name, self.tick_count + ACHIEVEMENT_FLASH_TICKS));
+            self.spawn_particles(60, 5);
         }
     }
 

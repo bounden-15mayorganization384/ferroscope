@@ -357,6 +357,19 @@ impl Demo for ZeroCostDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What does 'zero-cost abstraction' mean in Rust?",
+            [
+                "No compile time",
+                "High-level code compiles to optimal assembly",
+                "No heap allocations",
+                "No trait objects",
+            ],
+            1,
+        ))
+    }
 }
 
 #[cfg(test)]

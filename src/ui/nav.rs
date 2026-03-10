@@ -10,7 +10,7 @@ use crate::{app::App, demos::DemoRegistry, theme};
 
 /// Keyboard shortcut characters for each demo slot (up to 16 demos).
 const KEYS: &[&str] = &[
-    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "a", "b", "c", "d", "f",
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "a", "b", "c", "d", "f", "g",
 ];
 
 /// Difficulty level of each demo by index.
@@ -57,7 +57,26 @@ pub fn demo_difficulty(idx: usize) -> Difficulty {
         12 => Difficulty::Intermediate, // Compile-Time Guarantees
         13 => Difficulty::Beginner,     // Cargo Ecosystem
         14 => Difficulty::Advanced,     // Embedded / no_std
+        15 => Difficulty::Intermediate, // Macros
         _ => Difficulty::Intermediate,
+    }
+}
+
+/// Given a mouse x-coordinate and the nav bar's area, returns the demo index
+/// (0-based) that was clicked, or `None` if the click was outside the bar.
+pub fn nav_tab_at(x: u16, area: Rect, count: usize) -> Option<usize> {
+    if count == 0 || area.width == 0 {
+        return None;
+    }
+    if x < area.x || x >= area.x + area.width {
+        return None;
+    }
+    let rel = (x - area.x) as usize;
+    let idx = rel * count / area.width as usize;
+    if idx < count {
+        Some(idx)
+    } else {
+        None
     }
 }
 
@@ -109,6 +128,43 @@ mod tests {
     use super::*;
     use crate::demos::DemoRegistry;
     use ratatui::{backend::TestBackend, Terminal};
+
+    #[test]
+    fn test_nav_tab_at_basic() {
+        let area = Rect::new(0, 0, 100, 3);
+        // 10 demos across 100 cols → each tab is 10 cols wide
+        assert_eq!(nav_tab_at(0, area, 10), Some(0));
+        assert_eq!(nav_tab_at(9, area, 10), Some(0));
+        assert_eq!(nav_tab_at(10, area, 10), Some(1));
+        assert_eq!(nav_tab_at(99, area, 10), Some(9));
+    }
+
+    #[test]
+    fn test_nav_tab_at_offset_area() {
+        let area = Rect::new(5, 0, 100, 3); // area starts at x=5
+        assert_eq!(nav_tab_at(5, area, 10), Some(0)); // first col of area
+        assert_eq!(nav_tab_at(4, area, 10), None); // before area
+        assert_eq!(nav_tab_at(105, area, 10), None); // past end
+    }
+
+    #[test]
+    fn test_nav_tab_at_zero_count() {
+        let area = Rect::new(0, 0, 100, 3);
+        assert_eq!(nav_tab_at(50, area, 0), None);
+    }
+
+    #[test]
+    fn test_nav_tab_at_zero_width() {
+        let area = Rect::new(0, 0, 0, 3);
+        assert_eq!(nav_tab_at(0, area, 10), None);
+    }
+
+    #[test]
+    fn test_nav_tab_at_single_demo() {
+        let area = Rect::new(0, 0, 80, 3);
+        assert_eq!(nav_tab_at(0, area, 1), Some(0));
+        assert_eq!(nav_tab_at(79, area, 1), Some(0));
+    }
 
     #[test]
     fn test_render_demo_0_selected() {
@@ -189,8 +245,8 @@ mod tests {
     }
 
     #[test]
-    fn test_keys_cover_15_demos() {
-        for i in 0..15 {
+    fn test_keys_cover_16_demos() {
+        for i in 0..16 {
             let k = KEYS.get(i).copied().unwrap_or("?");
             assert_ne!(k, "?", "No key defined for demo index {}", i);
         }

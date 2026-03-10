@@ -6,7 +6,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::{app::App, theme};
+use crate::{app::App, demos::DemoRegistry, theme};
 
 /// 26 Rust facts that cycle in the footer ticker.
 pub fn rust_facts() -> &'static [&'static str] {
@@ -40,7 +40,7 @@ pub fn rust_facts() -> &'static [&'static str] {
     ]
 }
 
-pub fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
+pub fn render_footer(frame: &mut Frame, area: Rect, app: &App, registry: &DemoRegistry) {
     if area.height == 0 {
         return;
     }
@@ -85,6 +85,34 @@ pub fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
         Span::raw("")
     };
 
+    let step_hint = if registry.supports_step_control(app.current_demo) {
+        vec![
+            Span::styled(" │ ", theme::dim_style()),
+            Span::styled(
+                "N/P: Step",
+                Style::default()
+                    .fg(theme::SAFE_GREEN)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]
+    } else {
+        vec![]
+    };
+
+    let quiz_hint = if registry.quiz_current(app.current_demo).is_some() {
+        vec![
+            Span::styled(" │ ", theme::dim_style()),
+            Span::styled(
+                "T: Quiz",
+                Style::default()
+                    .fg(theme::BORROW_YELLOW)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]
+    } else {
+        vec![]
+    };
+
     // Line 0: Rust Facts ticker
     let fact_line = Line::from(vec![
         Span::styled("💡 ", Style::default().fg(theme::BORROW_YELLOW)),
@@ -92,7 +120,7 @@ pub fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
     ]);
 
     // Line 1: key controls
-    let controls_line = Line::from(vec![
+    let mut controls_spans = vec![
         pause_hint,
         Span::styled("← → Navigate", theme::dim_style()),
         Span::styled(" │ ", theme::dim_style()),
@@ -111,7 +139,10 @@ pub fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("?: Help", theme::dim_style()),
         Span::styled(" │ ", theme::dim_style()),
         Span::styled("Q: Quit", Style::default().fg(theme::CRAB_RED)),
-    ]);
+    ];
+    controls_spans.extend(step_hint);
+    controls_spans.extend(quiz_hint);
+    let controls_line = Line::from(controls_spans);
 
     frame.render_widget(Paragraph::new(vec![fact_line, controls_line]), area);
 }
@@ -119,6 +150,7 @@ pub fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::demos::DemoRegistry;
     use ratatui::{backend::TestBackend, Terminal};
 
     #[test]
@@ -140,38 +172,50 @@ mod tests {
 
     #[test]
     fn test_render_running() {
-        let app = App::new(15);
+        let app = App::new(16);
+        let registry = DemoRegistry::new();
         let backend = TestBackend::new(120, 2);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| render_footer(f, f.area(), &app)).unwrap();
+        terminal
+            .draw(|f| render_footer(f, f.area(), &app, &registry))
+            .unwrap();
     }
 
     #[test]
     fn test_render_paused() {
-        let mut app = App::new(15);
+        let mut app = App::new(16);
         app.paused = true;
+        let registry = DemoRegistry::new();
         let backend = TestBackend::new(120, 2);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| render_footer(f, f.area(), &app)).unwrap();
+        terminal
+            .draw(|f| render_footer(f, f.area(), &app, &registry))
+            .unwrap();
     }
 
     #[test]
     fn test_render_fact_cycles() {
-        let mut app = App::new(15);
+        let mut app = App::new(16);
         // Advance far enough to cycle facts
         app.fact_tick = 90 * 100;
+        let registry = DemoRegistry::new();
         let backend = TestBackend::new(120, 2);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| render_footer(f, f.area(), &app)).unwrap();
+        terminal
+            .draw(|f| render_footer(f, f.area(), &app, &registry))
+            .unwrap();
     }
 
     #[test]
     fn test_render_scrolling_in() {
-        let mut app = App::new(15);
+        let mut app = App::new(16);
         app.fact_tick = 10; // mid-scroll
+        let registry = DemoRegistry::new();
         let backend = TestBackend::new(120, 2);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| render_footer(f, f.area(), &app)).unwrap();
+        terminal
+            .draw(|f| render_footer(f, f.area(), &app, &registry))
+            .unwrap();
     }
 
     #[test]
@@ -183,24 +227,40 @@ mod tests {
             .iter()
             .position(|f| f.contains('—'))
             .expect("expected at least one fact with an em-dash");
-        let mut app = App::new(15);
+        let mut app = App::new(16);
+        let registry = DemoRegistry::new();
         for tick_offset in [5u64, 10, 15, 20, 25] {
             app.fact_tick = emdash_fact_idx as u64 * 90 + tick_offset;
             let backend = TestBackend::new(120, 2);
             let mut terminal = Terminal::new(backend).unwrap();
-            terminal.draw(|f| render_footer(f, f.area(), &app)).unwrap();
+            terminal
+                .draw(|f| render_footer(f, f.area(), &app, &registry))
+                .unwrap();
         }
     }
 
     #[test]
     fn test_render_zero_area() {
-        let app = App::new(15);
+        let app = App::new(16);
+        let registry = DemoRegistry::new();
         let backend = TestBackend::new(1, 1);
         let mut terminal = Terminal::new(backend).unwrap();
         // render into a zero-height rect — should not panic
         let zero_rect = Rect::new(0, 0, 80, 0);
         terminal
-            .draw(|f| render_footer(f, zero_rect, &app))
+            .draw(|f| render_footer(f, zero_rect, &app, &registry))
+            .unwrap();
+    }
+
+    #[test]
+    fn test_render_step_control_demo() {
+        let mut app = App::new(16);
+        app.current_demo = 15; // d16 Macros supports step control
+        let registry = DemoRegistry::new();
+        let backend = TestBackend::new(160, 2);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal
+            .draw(|f| render_footer(f, f.area(), &app, &registry))
             .unwrap();
     }
 }

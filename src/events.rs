@@ -17,6 +17,10 @@ pub enum AppEvent {
     Tick,
     ScrollUp,
     ScrollDown,
+    StepForward,
+    StepBack,
+    QuizToggle,
+    QuizAnswer(usize),
 }
 
 pub fn key_event_to_app_event(key: KeyEvent) -> Option<AppEvent> {
@@ -49,6 +53,11 @@ pub fn key_event_to_app_event(key: KeyEvent) -> Option<AppEvent> {
         KeyCode::Char('v') | KeyCode::Char('V') => Some(AppEvent::ToggleVsMode),
         KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => Some(AppEvent::ScrollUp),
         KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => Some(AppEvent::ScrollDown),
+        KeyCode::Char('n') | KeyCode::Char('N') => Some(AppEvent::StepForward),
+        KeyCode::Char('p') | KeyCode::Char('P') => Some(AppEvent::StepBack),
+        KeyCode::Char('t') | KeyCode::Char('T') => Some(AppEvent::QuizToggle),
+        // Demo 16 (Macros)
+        KeyCode::Char('g') | KeyCode::Char('G') => Some(AppEvent::SelectDemo(15)),
         _ => None,
     }
 }

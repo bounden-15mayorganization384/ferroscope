@@ -26,6 +26,7 @@ pub mod d12_system_metrics;
 pub mod d13_compile_time;
 pub mod d14_cargo_ecosystem;
 pub mod d15_no_std;
+mod d16_macros;
 
 pub trait Demo: Send + Sync {
     fn tick(&mut self, dt: Duration);
@@ -46,6 +47,26 @@ pub trait Demo: Send + Sync {
     /// Toggle an optional split-view comparison mode (e.g. Rust vs C++).
     /// Default implementation is a no-op.
     fn toggle_vsmode(&mut self) {}
+
+    /// Whether this demo supports manual step control (N/P keys).
+    /// Defaults to false; override to opt-in.
+    fn supports_step_control(&self) -> bool {
+        false
+    }
+
+    /// Advance to the next step manually (N key).
+    /// Only called when `supports_step_control()` is true.
+    fn step_forward(&mut self) {}
+
+    /// Go back to the previous step manually (P key).
+    /// Only called when `supports_step_control()` is true.
+    fn step_back(&mut self) {}
+
+    /// Optional quiz question for this demo.
+    /// Returns `Some((question, [opt0, opt1, opt2, opt3], correct_index))`.
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        None
+    }
 }
 
 // ─── Placeholder Demo ────────────────────────────────────────────────────────
@@ -159,6 +180,7 @@ impl DemoRegistry {
             Box::new(d13_compile_time::CompileTimeDemo::new()),
             Box::new(d14_cargo_ecosystem::CargoDemo::new()),
             Box::new(d15_no_std::NoStdDemo::new()),
+            Box::new(d16_macros::MacrosDemo::new()),
         ];
         Self { demos }
     }
@@ -221,6 +243,31 @@ impl DemoRegistry {
             demo.toggle_vsmode();
         }
     }
+
+    /// Whether the demo at `idx` supports manual step control.
+    pub fn supports_step_control(&self, idx: usize) -> bool {
+        self.demos
+            .get(idx)
+            .map(|d| d.supports_step_control())
+            .unwrap_or(false)
+    }
+
+    pub fn step_forward_current(&mut self, idx: usize) {
+        if let Some(d) = self.demos.get_mut(idx) {
+            d.step_forward();
+        }
+    }
+
+    pub fn step_back_current(&mut self, idx: usize) {
+        if let Some(d) = self.demos.get_mut(idx) {
+            d.step_back();
+        }
+    }
+
+    /// Returns the quiz for demo `idx`, if it has one.
+    pub fn quiz_current(&self, idx: usize) -> Option<(&'static str, [&'static str; 4], usize)> {
+        self.demos.get(idx).and_then(|d| d.quiz())
+    }
 }
 
 impl Default for DemoRegistry {
@@ -237,7 +284,7 @@ mod tests {
     #[test]
     fn test_registry_new_len() {
         let reg = DemoRegistry::new();
-        assert_eq!(reg.len(), 15);
+        assert_eq!(reg.len(), 16);
         assert!(!reg.is_empty());
     }
 
@@ -326,7 +373,7 @@ mod tests {
     #[test]
     fn test_registry_default() {
         let reg = DemoRegistry::default();
-        assert_eq!(reg.len(), 15);
+        assert_eq!(reg.len(), 16);
     }
 
     #[test]
@@ -373,7 +420,7 @@ mod tests {
     #[test]
     fn test_all_demos_render_without_panic() {
         let reg = DemoRegistry::new();
-        for i in 0..15 {
+        for i in 0..16 {
             let backend = TestBackend::new(80, 20);
             let mut terminal = Terminal::new(backend).unwrap();
             terminal

@@ -417,6 +417,19 @@ impl Demo for CompileTimeDemo {
     fn speed(&self) -> u8 {
         self.speed
     }
+
+    fn quiz(&self) -> Option<(&'static str, [&'static str; 4], usize)> {
+        Some((
+            "What is `const fn` in Rust used for?",
+            [
+                "Runtime optimization",
+                "Functions evaluated at compile time",
+                "Inline assembly",
+                "Async functions",
+            ],
+            1,
+        ))
+    }
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

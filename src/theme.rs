@@ -39,6 +39,46 @@ pub fn error_style() -> Style {
     Style::default().fg(CRAB_RED).add_modifier(Modifier::BOLD)
 }
 
+// ─── Rainbow / Konami helpers ─────────────────────────────────────────────────
+
+/// Convert HSV (h: 0..360, s: 0..1, v: 0..1) to (r, g, b) bytes.
+pub fn hsv_to_rgb(h: f64, s: f64, v: f64) -> (u8, u8, u8) {
+    let h = h % 360.0;
+    let c = v * s;
+    let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+    let m = v - c;
+    let (r1, g1, b1) = if h < 60.0 {
+        (c, x, 0.0)
+    } else if h < 120.0 {
+        (x, c, 0.0)
+    } else if h < 180.0 {
+        (0.0, c, x)
+    } else if h < 240.0 {
+        (0.0, x, c)
+    } else if h < 300.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
+    (
+        ((r1 + m) * 255.0) as u8,
+        ((g1 + m) * 255.0) as u8,
+        ((b1 + m) * 255.0) as u8,
+    )
+}
+
+/// Returns a fully-saturated rainbow `Color::Rgb` cycling at 3°/tick (120 tick period).
+pub fn konami_color(tick: u64) -> ratatui::style::Color {
+    let h = (tick * 3) % 360;
+    let (r, g, b) = hsv_to_rgb(h as f64, 1.0, 1.0);
+    ratatui::style::Color::Rgb(r, g, b)
+}
+
+/// Same as `konami_color` but with a per-character hue offset for marquee effects.
+pub fn konami_color_offset(tick: u64, offset: u64) -> ratatui::style::Color {
+    konami_color(tick.wrapping_add(offset * 8))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

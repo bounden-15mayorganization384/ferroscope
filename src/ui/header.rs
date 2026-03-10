@@ -8,7 +8,7 @@ use ratatui::{
 
 use crate::{app::App, theme};
 
-const DEMO_COUNT: usize = 15;
+const DEMO_COUNT: usize = 16;
 
 /// Build a text-based progress bar with `width` characters.
 fn progress_bar(visited: usize, total: usize, width: usize) -> String {
@@ -20,13 +20,15 @@ fn progress_bar(visited: usize, total: usize, width: usize) -> String {
 }
 
 pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
+    let border_color = if app.konami_active {
+        theme::konami_color(app.tick_count)
+    } else {
+        theme::RUST_ORANGE
+    };
+
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(if app.konami_active {
-            Style::default().fg(theme::CRAB_RED)
-        } else {
-            Style::default().fg(theme::RUST_ORANGE)
-        });
+        .border_style(Style::default().fg(border_color));
 
     // Render the block first, then work inside the inner area
     let inner = block.inner(area);
@@ -59,25 +61,48 @@ pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         Span::raw("")
     };
 
-    let title_line = Line::from(vec![
-        Span::styled(crab, Style::default().fg(theme::CRAB_RED)),
-        Span::styled(" 🦀 ", Style::default()),
-        Span::styled(
+    // Build FERROSCOPE title — rainbow per-character when Konami is active
+    let title_spans: Vec<Span> = if app.konami_active {
+        "FERROSCOPE"
+            .chars()
+            .enumerate()
+            .map(|(i, ch)| {
+                Span::styled(
+                    ch.to_string(),
+                    Style::default()
+                        .fg(theme::konami_color_offset(app.tick_count, i as u64))
+                        .add_modifier(Modifier::BOLD),
+                )
+            })
+            .collect()
+    } else {
+        vec![Span::styled(
             "FERROSCOPE",
             Style::default()
                 .fg(theme::RUST_ORANGE)
                 .add_modifier(Modifier::BOLD),
+        )]
+    };
+
+    let mut title_vec = vec![
+        Span::styled(crab, Style::default().fg(theme::CRAB_RED)),
+        Span::styled(" 🦀 ", Style::default()),
+    ];
+    title_vec.extend(title_spans);
+    title_vec.push(Span::styled(
+        "  │  Rust Capabilities Explorer",
+        theme::dim_style(),
+    ));
+    title_vec.push(Span::styled(
+        format!(
+            "  │  v0.1.0  │  Speed:{}x  │  tick:{}",
+            app.speed, app.tick_count
         ),
-        Span::styled("  │  Rust Capabilities Explorer", theme::dim_style()),
-        Span::styled(
-            format!(
-                "  │  v0.1.0  │  Speed:{}x  │  tick:{}",
-                app.speed, app.tick_count
-            ),
-            theme::dim_style(),
-        ),
-        paused_span,
-    ]);
+        theme::dim_style(),
+    ));
+    title_vec.push(paused_span);
+
+    let title_line = Line::from(title_vec);
     frame.render_widget(Paragraph::new(title_line), inner_chunks[0]);
 
     // ── Row 1: Explored progress bar ─────────────────────────────────────────
@@ -112,10 +137,11 @@ pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         } else {
             "   ★ CRAB MODE ACTIVATED ★   "
         };
+        let konami_color = theme::konami_color(app.tick_count);
         let konami_line = Line::from(Span::styled(
             pulse,
             Style::default()
-                .fg(theme::CRAB_RED)
+                .fg(konami_color)
                 .add_modifier(Modifier::BOLD),
         ));
         frame.render_widget(Paragraph::new(konami_line), inner_chunks[2]);
@@ -128,7 +154,7 @@ mod tests {
     use ratatui::{backend::TestBackend, Terminal};
 
     fn make_app(paused: bool) -> App {
-        let mut app = App::new(15);
+        let mut app = App::new(16);
         app.paused = paused;
         app
     }
@@ -160,9 +186,19 @@ mod tests {
     }
 
     #[test]
+    fn test_render_konami_rainbow_title() {
+        let mut app = make_app(false);
+        app.konami_active = true;
+        app.tick_count = 42;
+        let backend = TestBackend::new(120, 7);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| render_header(f, f.area(), &app)).unwrap();
+    }
+
+    #[test]
     fn test_render_all_demos_visited() {
         let mut app = make_app(false);
-        for i in 0..15 {
+        for i in 0..16 {
             app.visit(i);
         }
         let backend = TestBackend::new(120, 7);
