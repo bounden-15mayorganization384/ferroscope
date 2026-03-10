@@ -1,4 +1,4 @@
-# 🦀 Ferroscope
+# 🦀🔭 Ferroscope
 
 > **See Rust's power in real time.** 15 live interactive demos covering ownership,
 > zero-cost abstractions, fearless concurrency, async I/O, lifetimes, WASM, and more —
