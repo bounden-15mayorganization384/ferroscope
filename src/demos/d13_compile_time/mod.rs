@@ -155,6 +155,28 @@ impl CompileTimeDemo {
     }
 }
 
+fn code_line_style(l: &str) -> Style {
+    if l.is_empty() {
+        Style::default()
+    } else if l.starts_with("//") {
+        theme::dim_style()
+    } else if l.starts_with("const ") || l.starts_with("const fn") {
+        Style::default().fg(theme::ASYNC_PURPLE)
+    } else if l.contains("COMPILE ERROR") || l.contains("error") {
+        Style::default()
+            .fg(theme::CRAB_RED)
+            .add_modifier(Modifier::BOLD)
+    } else if l.starts_with("struct ")
+        || l.starts_with("impl ")
+        || l.starts_with("use ")
+        || l.starts_with("assert_eq_size!")
+    {
+        Style::default().fg(theme::BORROW_YELLOW)
+    } else {
+        Style::default().fg(theme::SAFE_GREEN)
+    }
+}
+
 impl Default for CompileTimeDemo {
     fn default() -> Self {
         Self::new()
@@ -213,39 +235,119 @@ impl Demo for CompileTimeDemo {
         );
 
         // Split main area left / right 50/50
-        let main_cols = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(chunks[1]);
+        if self.step % STEPS == 3 {
+            // Step 3 (Typestate): side-by-side invalid vs valid state panels
+            let typestate_cols = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(chunks[1]);
 
-        // Left: code panel in SAFE_GREEN
-        let code_lines: Vec<Line> = info
-            .code
-            .iter()
-            .map(|l| Line::from(Span::styled(*l, Style::default().fg(theme::SAFE_GREEN))))
-            .collect();
-        frame.render_widget(
-            Paragraph::new(code_lines).block(
-                Block::default()
-                    .title("Code")
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::SAFE_GREEN)),
-            ),
-            main_cols[0],
-        );
-
-        // Right: explanation text
-        frame.render_widget(
-            Paragraph::new(info.explanation)
-                .block(
+            let invalid_lines = vec![
+                Line::from(Span::styled(
+                    "// ✗ COMPILE ERROR — invalid usage:",
+                    theme::dim_style(),
+                )),
+                Line::from(""),
+                Line::from(Span::styled(
+                    "let c: Connection<Disconnected>;",
+                    Style::default().fg(theme::CRAB_RED),
+                )),
+                Line::from(Span::styled(
+                    "c.send();  // not defined on Disconnected",
+                    Style::default()
+                        .fg(theme::CRAB_RED)
+                        .add_modifier(Modifier::BOLD),
+                )),
+                Line::from(""),
+                Line::from(Span::styled(
+                    "// error[E0599]: no method `send`",
+                    theme::dim_style(),
+                )),
+                Line::from(Span::styled(
+                    "// must call .connect() first",
+                    theme::dim_style(),
+                )),
+            ];
+            frame.render_widget(
+                Paragraph::new(invalid_lines).block(
                     Block::default()
-                        .title("Explanation")
+                        .title("✗ Invalid State")
                         .borders(Borders::ALL)
-                        .border_style(Style::default().fg(theme::BORROW_YELLOW)),
-                )
-                .wrap(ratatui::widgets::Wrap { trim: true }),
-            main_cols[1],
-        );
+                        .border_style(Style::default().fg(theme::CRAB_RED)),
+                ),
+                typestate_cols[0],
+            );
+
+            let valid_lines = vec![
+                Line::from(Span::styled(
+                    "// ✓ Correct — typestate enforces sequence:",
+                    theme::dim_style(),
+                )),
+                Line::from(""),
+                Line::from(Span::styled(
+                    "let c = Connection::<Disconnected>;",
+                    Style::default().fg(theme::SAFE_GREEN),
+                )),
+                Line::from(Span::styled(
+                    "let c = c.connect();  // → Connected",
+                    Style::default().fg(theme::SAFE_GREEN),
+                )),
+                Line::from(Span::styled(
+                    "c.send();  // ✓ proven valid at compile time",
+                    Style::default()
+                        .fg(theme::SAFE_GREEN)
+                        .add_modifier(Modifier::BOLD),
+                )),
+                Line::from(""),
+                Line::from(Span::styled(
+                    "// Zero overhead — PhantomData<State>",
+                    theme::dim_style(),
+                )),
+            ];
+            frame.render_widget(
+                Paragraph::new(valid_lines).block(
+                    Block::default()
+                        .title("✓ Valid State")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(theme::SAFE_GREEN)),
+                ),
+                typestate_cols[1],
+            );
+        } else {
+            let main_cols = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(chunks[1]);
+
+            // Left: code panel with syntax highlighting
+            let code_lines: Vec<Line> = info
+                .code
+                .iter()
+                .map(|l| Line::from(Span::styled(*l, code_line_style(l))))
+                .collect();
+            frame.render_widget(
+                Paragraph::new(code_lines).block(
+                    Block::default()
+                        .title("Code")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(theme::SAFE_GREEN)),
+                ),
+                main_cols[0],
+            );
+
+            // Right: explanation text
+            frame.render_widget(
+                Paragraph::new(info.explanation)
+                    .block(
+                        Block::default()
+                            .title("Explanation")
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(theme::BORROW_YELLOW)),
+                    )
+                    .wrap(ratatui::widgets::Wrap { trim: true }),
+                main_cols[1],
+            );
+        }
 
         // Stats bar
         frame.render_widget(
@@ -493,5 +595,38 @@ mod tests {
         d.tick(Duration::from_millis(1));
         assert_eq!(d.bugs_caught_compile_time, 1); // one tick → one increment
         assert_eq!(d.bugs_caught_compile_time, d.counter_target.min(1));
+    }
+
+    #[test]
+    fn test_syntax_highlight_comment() {
+        let style = code_line_style("// This is a comment");
+        assert_eq!(style, theme::dim_style());
+    }
+
+    #[test]
+    fn test_syntax_highlight_const_keyword() {
+        let style = code_line_style("const MAX: usize = 42;");
+        assert_eq!(style, Style::default().fg(theme::ASYNC_PURPLE));
+    }
+
+    #[test]
+    fn test_syntax_highlight_struct() {
+        let style = code_line_style("struct Foo;");
+        assert_eq!(style, Style::default().fg(theme::BORROW_YELLOW));
+    }
+
+    #[test]
+    fn test_syntax_highlight_default() {
+        let style = code_line_style("    some_value: 42,");
+        assert_eq!(style, Style::default().fg(theme::SAFE_GREEN));
+    }
+
+    #[test]
+    fn test_render_step3_split() {
+        let mut d = CompileTimeDemo::new();
+        d.step = 3; // typestate step → triggers the split layout
+        let backend = TestBackend::new(120, 30);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| d.render(f, f.area())).unwrap();
     }
 }

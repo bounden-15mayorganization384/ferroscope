@@ -131,12 +131,22 @@ impl Demo for ZeroCostDemo {
             .constraints([Constraint::Length(3), Constraint::Min(10), Constraint::Length(5)])
             .split(area);
 
-        // Title
+        // Title — shows live phase status
+        let (title_text, title_color) = match self.phase {
+            BenchPhase::Running => (
+                format!("● Running benchmark…  n = {}  |  Zero-Cost Abstractions", self.bench_n),
+                theme::BORROW_YELLOW,
+            ),
+            BenchPhase::Displaying => (
+                format!("✓ Complete — next: n = {}  |  Zero-Cost Abstractions", self.bench_n),
+                theme::SAFE_GREEN,
+            ),
+        };
         frame.render_widget(
             Paragraph::new(Span::styled(
-                "Zero-Cost Abstractions — Iterator chains compile to the same code as manual loops",
-                Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD),
-            )).block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme::RUST_ORANGE))),
+                title_text,
+                Style::default().fg(title_color).add_modifier(Modifier::BOLD),
+            )).block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(title_color))),
             chunks[0],
         );
 
@@ -347,5 +357,25 @@ mod tests {
     fn test_barchart_import_available() {
         // Verify BarChart is importable (it is used in the performance demo)
         let _ = BarChart::default();
+    }
+
+    #[test]
+    fn test_render_displaying_phase() {
+        let mut d = ZeroCostDemo::new();
+        d.phase = BenchPhase::Displaying;
+        let backend = TestBackend::new(120, 30);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| d.render(f, f.area())).unwrap();
+    }
+
+    #[test]
+    fn test_render_both_phases() {
+        let mut d = ZeroCostDemo::new();
+        for phase in [BenchPhase::Running, BenchPhase::Displaying] {
+            d.phase = phase;
+            let backend = TestBackend::new(120, 30);
+            let mut terminal = Terminal::new(backend).unwrap();
+            terminal.draw(|f| d.render(f, f.area())).unwrap();
+        }
     }
 }

@@ -165,7 +165,8 @@ impl Demo for TypeSystemDemo {
                 1 => generic_bounds_lines().len(),
                 2 => enum_arms().len(),
                 3 => newtype_lines().len(),
-                _ => 1,
+                4 => 9, // 9 lines in associated types block
+                _ => 4, // 4 scan values for pattern matching
             };
             self.advance_item(max);
         }
@@ -218,10 +219,23 @@ impl Demo for TypeSystemDemo {
                     })
                     .collect()
             }
-            1 => generic_bounds_lines()
-                .iter()
-                .map(|l| Line::from(Span::styled(*l, theme::dim_style())))
-                .collect(),
+            1 => {
+                let gl = generic_bounds_lines();
+                let len = gl.len();
+                gl.iter()
+                    .enumerate()
+                    .map(|(i, l)| {
+                        let style = if i == self.selected_item % len {
+                            Style::default()
+                                .fg(theme::HEAP_BLUE)
+                                .add_modifier(Modifier::BOLD)
+                        } else {
+                            theme::dim_style()
+                        };
+                        Line::from(Span::styled(*l, style))
+                    })
+                    .collect()
+            }
             2 => {
                 let ea = enum_arms();
                 let len = ea.len();
@@ -239,60 +253,81 @@ impl Demo for TypeSystemDemo {
                     })
                     .collect()
             }
-            3 => newtype_lines()
-                .iter()
-                .map(|(l, highlighted)| {
-                    let style = if *highlighted {
-                        Style::default()
-                            .fg(theme::CRAB_RED)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        theme::dim_style()
-                    };
-                    Line::from(Span::styled(*l, style))
-                })
-                .collect(),
-            4 => vec![
-                Line::from(Span::styled("trait Iterator {", theme::dim_style())),
-                Line::from(Span::styled(
-                    "    type Item;",
-                    Style::default()
-                        .fg(theme::BORROW_YELLOW)
-                        .add_modifier(Modifier::BOLD),
-                )),
-                Line::from(Span::styled(
-                    "    fn next(&mut self) -> Option<Self::Item>;",
-                    theme::dim_style(),
-                )),
-                Line::from(Span::styled("}", theme::dim_style())),
-                Line::from(""),
-                Line::from(Span::styled("// For Vec<String>:", theme::dim_style())),
-                Line::from(Span::styled(
-                    "//   type Item = String",
-                    Style::default().fg(theme::SAFE_GREEN),
-                )),
-                Line::from(Span::styled("// For Vec<u32>:", theme::dim_style())),
-                Line::from(Span::styled(
-                    "//   type Item = u32",
-                    Style::default().fg(theme::SAFE_GREEN),
-                )),
-            ],
+            3 => {
+                let nl = newtype_lines();
+                let len = nl.len();
+                nl.iter()
+                    .enumerate()
+                    .map(|(i, (l, highlighted))| {
+                        let style = if i == self.selected_item % len {
+                            Style::default()
+                                .fg(theme::BORROW_YELLOW)
+                                .add_modifier(Modifier::BOLD)
+                        } else if *highlighted {
+                            Style::default()
+                                .fg(theme::CRAB_RED)
+                                .add_modifier(Modifier::BOLD)
+                        } else {
+                            theme::dim_style()
+                        };
+                        Line::from(Span::styled(*l, style))
+                    })
+                    .collect()
+            }
+            4 => {
+                let assoc: &[(&str, bool)] = &[
+                    ("trait Iterator {", false),
+                    ("    type Item;", true),
+                    ("    fn next(&mut self) -> Option<Self::Item>;", false),
+                    ("}", false),
+                    ("", false),
+                    ("// For Vec<String>:", false),
+                    ("//   type Item = String", true),
+                    ("// For Vec<u32>:", false),
+                    ("//   type Item = u32", true),
+                ];
+                let len = assoc.len();
+                assoc
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (l, is_key))| {
+                        let style = if i == self.selected_item % len {
+                            Style::default()
+                                .fg(theme::BORROW_YELLOW)
+                                .add_modifier(Modifier::BOLD)
+                        } else if *is_key {
+                            Style::default().fg(theme::SAFE_GREEN)
+                        } else {
+                            theme::dim_style()
+                        };
+                        Line::from(Span::styled(*l, style))
+                    })
+                    .collect()
+            }
             _ => {
-                let vals = [-5i32, 0, 150, 50];
-                vals.iter()
-                    .map(|&v| {
+                let scan_vals: [i32; 4] = [-100, 0, 25, 150];
+                let active = self.selected_item % 4;
+                scan_vals
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &v)| {
                         let result = pattern_match_result(v);
-                        Line::from(vec![
-                            Span::styled(
-                                format!("  match {:4} => ", v),
-                                theme::dim_style(),
-                            ),
-                            Span::styled(
-                                result,
+                        let is_active = i == active;
+                        let (val_style, res_style) = if is_active {
+                            (
+                                Style::default()
+                                    .fg(theme::RUST_ORANGE)
+                                    .add_modifier(Modifier::BOLD),
                                 Style::default()
                                     .fg(theme::SAFE_GREEN)
                                     .add_modifier(Modifier::BOLD),
-                            ),
+                            )
+                        } else {
+                            (theme::dim_style(), theme::dim_style())
+                        };
+                        Line::from(vec![
+                            Span::styled(format!("  match {:5} => ", v), val_style),
+                            Span::styled(result, res_style),
                         ])
                     })
                     .collect()
@@ -516,5 +551,55 @@ mod tests {
         let lines = newtype_lines();
         let highlighted: Vec<_> = lines.iter().filter(|(_, h)| *h).collect();
         assert!(!highlighted.is_empty());
+    }
+
+    #[test]
+    fn test_selected_item_cycles_step1() {
+        let mut d = TypeSystemDemo::new();
+        d.step = 1;
+        let max = generic_bounds_lines().len();
+        d.selected_item = max - 1;
+        d.advance_item(max);
+        assert_eq!(d.selected_item, 0);
+    }
+
+    #[test]
+    fn test_selected_item_cycles_step4() {
+        let mut d = TypeSystemDemo::new();
+        d.step = 4;
+        d.selected_item = 8;
+        d.advance_item(9);
+        assert_eq!(d.selected_item, 0);
+    }
+
+    #[test]
+    fn test_selected_item_cycles_step5() {
+        let mut d = TypeSystemDemo::new();
+        d.step = 5;
+        d.selected_item = 3;
+        d.advance_item(4);
+        assert_eq!(d.selected_item, 0);
+    }
+
+    #[test]
+    fn test_pattern_match_scan_vals() {
+        assert_eq!(pattern_match_result(-100), "negative");
+        assert_eq!(pattern_match_result(25), "normal positive");
+        assert_eq!(pattern_match_result(0), "zero");
+        assert_eq!(pattern_match_result(150), "big positive");
+    }
+
+    #[test]
+    fn test_render_all_steps_with_cycling() {
+        let mut d = TypeSystemDemo::new();
+        for step in 0..STEPS {
+            d.step = step;
+            for sel in [0usize, 1, 3] {
+                d.selected_item = sel;
+                let backend = TestBackend::new(120, 30);
+                let mut terminal = Terminal::new(backend).unwrap();
+                terminal.draw(|f| d.render(f, f.area())).unwrap();
+            }
+        }
     }
 }

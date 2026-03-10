@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Gauge, List, ListItem, Paragraph},
+    widgets::{Bar, BarChart, BarGroup, Block, Borders, Gauge, List, ListItem, Paragraph},
     Frame,
 };
 use crate::{demos::Demo, theme};
@@ -15,6 +15,8 @@ pub struct WasmDemo {
     pub tick_count: u64,
     pub animation_frame: u8,
     frame_timer: f64,
+    pub step: usize,
+    step_timer: f64,
 }
 
 impl WasmDemo {
@@ -25,7 +27,18 @@ impl WasmDemo {
             tick_count: 0,
             animation_frame: 0,
             frame_timer: 0.0,
+            step: 0,
+            step_timer: 0.0,
         }
+    }
+
+    pub fn step_duration_secs(&self) -> f64 {
+        4.0 / self.speed as f64
+    }
+
+    pub fn advance_step(&mut self) {
+        self.step = (self.step + 1) % 4;
+        self.step_timer = 0.0;
     }
 }
 
@@ -76,6 +89,26 @@ pub fn js_type_mappings() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
+/// Numeric binary sizes in KB for BarChart comparison.
+pub fn size_comparison_kb() -> &'static [(&'static str, u64)] {
+    &[
+        ("Rust", 35),
+        ("C/Emscr.", 60),
+        ("Go", 2_300),
+        ("Java", 6_000),
+        ("Python", 25_000),
+    ]
+}
+
+fn step_title(step: usize) -> &'static str {
+    match step % 4 {
+        0 => "Step 1/4: Compilation Targets — wasm32 target triples",
+        1 => "Step 2/4: Binary Layout — WASM section proportions",
+        2 => "Step 3/4: Binary Size — Rust vs other languages",
+        _ => "Step 4/4: JS Bridge — wasm-bindgen type mappings",
+    }
+}
+
 impl Default for WasmDemo {
     fn default() -> Self {
         Self::new()
@@ -95,6 +128,11 @@ impl Demo for WasmDemo {
             self.animation_frame = (self.animation_frame + 1) % 60;
             self.frame_timer = 0.0;
         }
+
+        self.step_timer += dt.as_secs_f64();
+        if self.step_timer >= self.step_duration_secs() {
+            self.advance_step();
+        }
     }
 
     fn render(&self, frame: &mut Frame, area: Rect) {
@@ -107,15 +145,12 @@ impl Demo for WasmDemo {
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(3),
-                Constraint::Min(10),
-            ])
+            .constraints([Constraint::Length(3), Constraint::Min(10)])
             .split(area);
 
         frame.render_widget(
             Paragraph::new(Span::styled(
-                "WebAssembly — Compile Rust to WASM, run everywhere at near-native speed",
+                step_title(self.step),
                 Style::default().fg(pulse).add_modifier(Modifier::BOLD),
             ))
             .block(
@@ -126,138 +161,183 @@ impl Demo for WasmDemo {
             chunks[0],
         );
 
-        // Split body into four panels
-        let body = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(30),
-                Constraint::Percentage(30),
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
-            ])
-            .split(chunks[1]);
-
-        // Panel 1: Target triples
-        let triples = wasm_target_triples();
-        let triple_items: Vec<ListItem> = triples
-            .iter()
-            .map(|(triple, desc)| {
-                ListItem::new(vec![
-                    Line::from(Span::styled(*triple, Style::default().fg(theme::BORROW_YELLOW).add_modifier(Modifier::BOLD))),
-                    Line::from(Span::styled(format!("  {}", desc), theme::dim_style())),
-                    Line::from(""),
-                ])
-            })
-            .collect();
-        frame.render_widget(
-            List::new(triple_items).block(
-                Block::default()
-                    .title("Target Triples")
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::BORROW_YELLOW)),
-            ),
-            body[0],
-        );
-
-        // Panel 2: WASM section proportions as gauges
-        let sections = wasm_section_proportions();
-        let section_inner = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(
-                sections
+        match self.step % 4 {
+            0 => {
+                // Step 1: Target triples
+                let triples = wasm_target_triples();
+                let triple_items: Vec<ListItem> = triples
                     .iter()
-                    .map(|_| Constraint::Length(2))
-                    .chain(std::iter::once(Constraint::Min(0)))
-                    .collect::<Vec<_>>(),
-            )
-            .split(body[1]);
-
-        let section_block = Block::default()
-            .title("WASM Sections")
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(theme::STACK_CYAN));
-        frame.render_widget(section_block, body[1]);
-
-        // Render section gauges inside the block (with 1-cell border offset)
-        let inner_area = ratatui::layout::Rect {
-            x: body[1].x + 1,
-            y: body[1].y + 1,
-            width: body[1].width.saturating_sub(2),
-            height: body[1].height.saturating_sub(2),
-        };
-        let gauge_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(
-                sections
-                    .iter()
-                    .map(|_| Constraint::Length(1))
-                    .chain(std::iter::once(Constraint::Min(0)))
-                    .collect::<Vec<_>>(),
-            )
-            .split(inner_area);
-
-        for (i, (name, ratio)) in sections.iter().enumerate() {
-            if i < gauge_layout.len().saturating_sub(1) {
-                let color = if *name == "code" {
-                    theme::SAFE_GREEN
-                } else {
-                    theme::STACK_CYAN
-                };
-                let label = format!("{:8} {:4.0}%", name, ratio * 100.0);
+                    .map(|(triple, desc)| {
+                        ListItem::new(vec![
+                            Line::from(Span::styled(
+                                *triple,
+                                Style::default()
+                                    .fg(theme::BORROW_YELLOW)
+                                    .add_modifier(Modifier::BOLD),
+                            )),
+                            Line::from(Span::styled(
+                                format!("  {}", desc),
+                                theme::dim_style(),
+                            )),
+                            Line::from(""),
+                        ])
+                    })
+                    .collect();
+                let cmd_line = Line::from(vec![
+                    Span::styled("$ cargo build --target ", theme::dim_style()),
+                    Span::styled(
+                        "wasm32-unknown-unknown",
+                        Style::default()
+                            .fg(theme::BORROW_YELLOW)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(" --release", theme::dim_style()),
+                ]);
+                let inner = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(8), Constraint::Length(3)])
+                    .split(chunks[1]);
                 frame.render_widget(
-                    Gauge::default()
-                        .gauge_style(Style::default().fg(color))
-                        .label(label)
-                        .ratio(ratio.clamp(0.0, 1.0)),
-                    gauge_layout[i],
+                    List::new(triple_items).block(
+                        Block::default()
+                            .title("Target Triples")
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(theme::BORROW_YELLOW)),
+                    ),
+                    inner[0],
+                );
+                frame.render_widget(
+                    Paragraph::new(cmd_line).block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(theme::STACK_CYAN)),
+                    ),
+                    inner[1],
+                );
+            }
+            1 => {
+                // Step 2: WASM section proportions as gauges
+                let sections = wasm_section_proportions();
+                let section_block = Block::default()
+                    .title("WASM Binary Sections")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::STACK_CYAN));
+                let inner_area = ratatui::layout::Rect {
+                    x: chunks[1].x + 1,
+                    y: chunks[1].y + 1,
+                    width: chunks[1].width.saturating_sub(2),
+                    height: chunks[1].height.saturating_sub(2),
+                };
+                frame.render_widget(section_block, chunks[1]);
+                let gauge_layout = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(
+                        sections
+                            .iter()
+                            .map(|_| Constraint::Length(1))
+                            .chain(std::iter::once(Constraint::Min(0)))
+                            .collect::<Vec<_>>(),
+                    )
+                    .split(inner_area);
+                for (i, (name, ratio)) in sections.iter().enumerate() {
+                    if i < gauge_layout.len().saturating_sub(1) {
+                        let color = if *name == "code" {
+                            theme::SAFE_GREEN
+                        } else {
+                            theme::STACK_CYAN
+                        };
+                        let label = format!("{:8} {:4.0}%", name, ratio * 100.0);
+                        frame.render_widget(
+                            Gauge::default()
+                                .gauge_style(Style::default().fg(color))
+                                .label(label)
+                                .ratio(ratio.clamp(0.0, 1.0)),
+                            gauge_layout[i],
+                        );
+                    }
+                }
+            }
+            2 => {
+                // Step 3: BarChart binary size comparison
+                let sizes = size_comparison_kb();
+                let max_kb = sizes.iter().map(|(_, kb)| *kb).max().unwrap_or(1);
+                let bars: Vec<Bar> = sizes
+                    .iter()
+                    .map(|(lang, kb)| {
+                        let color = if *lang == "Rust" {
+                            theme::SAFE_GREEN
+                        } else {
+                            theme::TEXT_DIM
+                        };
+                        Bar::default()
+                            .value(*kb)
+                            .label(Line::from(*lang))
+                            .style(Style::default().fg(color))
+                    })
+                    .collect();
+                let group = BarGroup::default().bars(&bars);
+                let arch = std::env::consts::ARCH;
+                let os = std::env::consts::OS;
+                let title = format!("Binary Size (KB) — platform: {arch}/{os}");
+                frame.render_widget(
+                    BarChart::default()
+                        .data(group)
+                        .bar_width(10)
+                        .bar_gap(2)
+                        .max(max_kb)
+                        .block(
+                            Block::default()
+                                .title(title)
+                                .borders(Borders::ALL)
+                                .border_style(Style::default().fg(theme::SAFE_GREEN)),
+                        ),
+                    chunks[1],
+                );
+            }
+            _ => {
+                // Step 4: JS type mappings + wasm-bindgen overview
+                let mappings = js_type_mappings();
+                let map_items: Vec<ListItem> = mappings
+                    .iter()
+                    .map(|(rust_ty, js_ty)| {
+                        ListItem::new(Line::from(vec![
+                            Span::styled(
+                                format!("{:20}", rust_ty),
+                                Style::default().fg(theme::RUST_ORANGE),
+                            ),
+                            Span::styled("→ ", theme::dim_style()),
+                            Span::styled(*js_ty, Style::default().fg(theme::HEAP_BLUE)),
+                        ]))
+                    })
+                    .collect();
+                let arch = std::env::consts::ARCH;
+                let os = std::env::consts::OS;
+                let footer_text = format!(
+                    "  wasm-bindgen marshals Rust types to/from JS — platform: {arch}/{os}"
+                );
+                let inner = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(8), Constraint::Length(3)])
+                    .split(chunks[1]);
+                frame.render_widget(
+                    List::new(map_items).block(
+                        Block::default()
+                            .title("JS Type Mappings (wasm-bindgen)")
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(theme::HEAP_BLUE)),
+                    ),
+                    inner[0],
+                );
+                frame.render_widget(
+                    Paragraph::new(Span::styled(footer_text, theme::dim_style())).block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(theme::STACK_CYAN)),
+                    ),
+                    inner[1],
                 );
             }
         }
-        // Suppress unused variable warning for section_inner
-        let _ = section_inner;
-
-        // Panel 3: Size comparison
-        let sizes = size_comparison_table();
-        let size_items: Vec<ListItem> = sizes
-            .iter()
-            .map(|(lang, size)| {
-                ListItem::new(Line::from(vec![
-                    Span::styled(format!("{:25}", lang), theme::dim_style()),
-                    Span::styled(*size, Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD)),
-                ]))
-            })
-            .collect();
-        frame.render_widget(
-            List::new(size_items).block(
-                Block::default()
-                    .title("Binary Sizes")
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::SAFE_GREEN)),
-            ),
-            body[2],
-        );
-
-        // Panel 4: JS type mappings
-        let mappings = js_type_mappings();
-        let map_items: Vec<ListItem> = mappings
-            .iter()
-            .map(|(rust_ty, js_ty)| {
-                ListItem::new(Line::from(vec![
-                    Span::styled(format!("{:20}", rust_ty), Style::default().fg(theme::RUST_ORANGE)),
-                    Span::styled("→ ", theme::dim_style()),
-                    Span::styled(*js_ty, Style::default().fg(theme::HEAP_BLUE)),
-                ]))
-            })
-            .collect();
-        frame.render_widget(
-            List::new(map_items).block(
-                Block::default()
-                    .title("JS Type Mappings")
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::HEAP_BLUE)),
-            ),
-            body[3],
-        );
     }
 
     fn name(&self) -> &'static str {
@@ -279,6 +359,8 @@ impl Demo for WasmDemo {
         self.animation_frame = 0;
         self.frame_timer = 0.0;
         self.tick_count = 0;
+        self.step = 0;
+        self.step_timer = 0.0;
         self.paused = false;
     }
 
@@ -405,9 +487,11 @@ mod tests {
         let mut d = WasmDemo::new();
         d.animation_frame = 42;
         d.tick_count = 999;
+        d.step = 3;
         d.reset();
         assert_eq!(d.animation_frame, 0);
         assert_eq!(d.tick_count, 0);
+        assert_eq!(d.step, 0);
         assert!(!d.is_paused());
     }
 
@@ -434,5 +518,66 @@ mod tests {
     fn test_default() {
         let d = WasmDemo::default();
         assert_eq!(d.animation_frame, 0);
+        assert_eq!(d.step, 0);
+    }
+
+    #[test]
+    fn test_render_all_steps() {
+        let mut d = WasmDemo::new();
+        for step in 0..4 {
+            d.step = step;
+            let backend = TestBackend::new(120, 30);
+            let mut terminal = Terminal::new(backend).unwrap();
+            terminal.draw(|f| d.render(f, f.area())).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_advance_step_wraps() {
+        let mut d = WasmDemo::new();
+        d.step = 3;
+        d.advance_step();
+        assert_eq!(d.step, 0);
+    }
+
+    #[test]
+    fn test_step_duration_varies_with_speed() {
+        let mut d = WasmDemo::new();
+        d.set_speed(2);
+        assert!((d.step_duration_secs() - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_tick_advances_step() {
+        let mut d = WasmDemo::new();
+        // step_duration at speed=1 is 4.0s
+        d.tick(Duration::from_secs_f64(4.1));
+        assert_eq!(d.step, 1);
+    }
+
+    #[test]
+    fn test_size_comparison_kb_has_rust() {
+        let sizes = size_comparison_kb();
+        assert!(!sizes.is_empty());
+        assert!(sizes.iter().any(|(lang, _)| *lang == "Rust"));
+    }
+
+    #[test]
+    fn test_size_comparison_kb_rust_smallest() {
+        let sizes = size_comparison_kb();
+        let rust_kb = sizes.iter().find(|(l, _)| *l == "Rust").unwrap().1;
+        for (lang, kb) in sizes {
+            if *lang != "Rust" {
+                assert!(rust_kb < *kb, "Rust ({rust_kb} KB) should be smaller than {lang} ({kb} KB)");
+            }
+        }
+    }
+
+    #[test]
+    fn test_step_titles_all_steps() {
+        for i in 0..4 {
+            assert!(!step_title(i).is_empty());
+            assert!(step_title(i).contains(&format!("{}/4", i + 1)));
+        }
     }
 }
