@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use sysinfo::System;
 
 #[derive(Debug, Clone)]

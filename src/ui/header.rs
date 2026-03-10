@@ -107,7 +107,7 @@ pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
 
     // ── Row 2: Konami CRAB MODE ───────────────────────────────────────────────
     if inner_chunks[2].height > 0 && app.konami_active {
-        let pulse = if (app.tick_count / 4) % 2 == 0 {
+        let pulse = if (app.tick_count / 4).is_multiple_of(2) {
             "🦀🦀🦀  ★ CRAB MODE ACTIVATED ★  🦀🦀🦀"
         } else {
             "   ★ CRAB MODE ACTIVATED ★   "

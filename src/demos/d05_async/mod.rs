@@ -166,7 +166,7 @@ impl AsyncDemo {
 /// - Done     -> Done (no change)
 ///
 /// Returns `(newly_completed, total_polls_this_cycle)`.
-pub fn simulate_poll_cycle(tasks: &mut Vec<AsyncTask>) -> (u64, u64) {
+pub fn simulate_poll_cycle(tasks: &mut [AsyncTask]) -> (u64, u64) {
     let mut newly_completed = 0u64;
     let mut total_polls = 0u64;
 

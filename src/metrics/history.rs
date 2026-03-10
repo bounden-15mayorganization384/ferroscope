@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 /// A fixed-capacity ring buffer that keeps the N most recent items.
 #[derive(Debug, Clone)]
 pub struct RingBuffer<T> {

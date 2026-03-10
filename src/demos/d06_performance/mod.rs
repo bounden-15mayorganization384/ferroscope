@@ -441,7 +441,7 @@ impl Demo for PerformanceDemo {
             }
 
             PerfPhase::Summary => {
-                let s0 = if self.sort_results.len() > 0 {
+                let s0 = if !self.sort_results.is_empty() {
                     self.sort_results[0].ns_per_op.max(1) as f64
                 } else {
                     1.0
@@ -467,7 +467,7 @@ impl Demo for PerformanceDemo {
                 fg.push_frame(
                     format!(
                         "sort_unstable  {}ns/elem",
-                        self.sort_results.get(0).map(|r| r.ns_per_op).unwrap_or(0)
+                        self.sort_results.first().map(|r| r.ns_per_op).unwrap_or(0)
                     ),
                     s0 / total,
                 );

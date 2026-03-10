@@ -25,6 +25,7 @@ impl FlameGraph {
         self.frames.push((label.into(), p));
     }
 
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.frames.clear();
     }

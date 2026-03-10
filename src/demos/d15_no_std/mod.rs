@@ -278,7 +278,7 @@ impl Demo for NoStdDemo {
         );
 
         // Right panel: binary size bar chart with animated active-row indicator
-        let pulse = if self.animation_frame % 2 == 0 {
+        let pulse = if self.animation_frame.is_multiple_of(2) {
             "▶ "
         } else {
             "  "

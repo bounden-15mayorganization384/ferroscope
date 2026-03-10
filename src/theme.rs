@@ -7,11 +7,14 @@ pub const BORROW_YELLOW: Color = Color::Rgb(220, 180, 50);
 pub const HEAP_BLUE: Color = Color::Rgb(60, 120, 220);
 pub const STACK_CYAN: Color = Color::Rgb(50, 200, 210);
 pub const ASYNC_PURPLE: Color = Color::Rgb(150, 80, 220);
+#[allow(dead_code)]
 pub const DARK_BG: Color = Color::Rgb(20, 20, 30);
+#[allow(dead_code)]
 pub const PANEL_BG: Color = Color::Rgb(30, 30, 45);
 pub const TEXT_PRIMARY: Color = Color::White;
 pub const TEXT_DIM: Color = Color::Rgb(150, 150, 165);
 
+#[allow(dead_code)]
 pub fn title_style() -> Style {
     Style::default()
         .fg(RUST_ORANGE)
@@ -22,6 +25,7 @@ pub fn label_style() -> Style {
     Style::default().fg(TEXT_PRIMARY)
 }
 
+#[allow(dead_code)]
 pub fn highlight_style() -> Style {
     Style::default().fg(SAFE_GREEN).add_modifier(Modifier::BOLD)
 }
@@ -30,6 +34,7 @@ pub fn dim_style() -> Style {
     Style::default().fg(TEXT_DIM)
 }
 
+#[allow(dead_code)]
 pub fn error_style() -> Style {
     Style::default().fg(CRAB_RED).add_modifier(Modifier::BOLD)
 }

@@ -8,4 +8,4 @@ pub use code_panel::CodePanel;
 pub use flame_graph::FlameGraph;
 pub use gauge_bar::GaugeBar;
 pub use sparkline_ext::SparklineExt;
-pub use thread_lane::{ThreadLane, ThreadLaneChart, ThreadState};
+pub use thread_lane::{ThreadLaneChart, ThreadState};

@@ -31,12 +31,17 @@ pub trait Demo: Send + Sync {
     fn tick(&mut self, dt: Duration);
     fn render(&self, frame: &mut Frame, area: Rect);
     fn name(&self) -> &'static str;
+    #[allow(dead_code)]
     fn description(&self) -> &'static str;
     fn explanation(&self) -> &'static str;
     fn reset(&mut self);
+    #[allow(dead_code)]
     fn toggle_pause(&mut self);
+    #[allow(dead_code)]
     fn is_paused(&self) -> bool;
+    #[allow(dead_code)]
     fn set_speed(&mut self, speed: u8);
+    #[allow(dead_code)]
     fn speed(&self) -> u8;
     /// Toggle an optional split-view comparison mode (e.g. Rust vs C++).
     /// Default implementation is a no-op.
@@ -46,6 +51,7 @@ pub trait Demo: Send + Sync {
 // ─── Placeholder Demo ────────────────────────────────────────────────────────
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct PlaceholderDemo {
     name: &'static str,
     description: &'static str,
@@ -56,6 +62,7 @@ struct PlaceholderDemo {
 }
 
 impl PlaceholderDemo {
+    #[allow(dead_code)]
     fn new(name: &'static str, description: &'static str, explanation: &'static str) -> Self {
         Self {
             name,
@@ -156,10 +163,12 @@ impl DemoRegistry {
         Self { demos }
     }
 
+    #[allow(dead_code)]
     pub fn get(&self, idx: usize) -> Option<&dyn Demo> {
         self.demos.get(idx).map(|d| d.as_ref())
     }
 
+    #[allow(dead_code)]
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut dyn Demo> {
         match self.demos.get_mut(idx) {
             Some(d) => Some(d.as_mut()),
@@ -171,6 +180,7 @@ impl DemoRegistry {
         self.demos.len()
     }
 
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.demos.is_empty()
     }
@@ -179,6 +189,7 @@ impl DemoRegistry {
         self.demos.get(idx).map(|d| d.name())
     }
 
+    #[allow(dead_code)]
     pub fn description(&self, idx: usize) -> Option<&'static str> {
         self.demos.get(idx).map(|d| d.description())
     }

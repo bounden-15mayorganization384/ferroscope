@@ -14,6 +14,7 @@ const MAX_HISTORY: usize = 60;
 #[derive(Debug)]
 pub struct SystemMetricsDemo {
     paused: bool,
+    #[allow(dead_code)]
     speed: u8,
     pub tick_count: u64,
     sys: System,
@@ -75,10 +76,10 @@ impl SystemMetricsDemo {
 /// Deterministically generates a simulated GC pause value (ms) from a tick counter.
 /// Returns 0.0 most of the time; spikes every ~30 ticks; major GC every ~120 ticks.
 pub fn simulated_gc_pause_ms(tick: u64) -> f64 {
-    if tick % 127 == 0 {
+    if tick.is_multiple_of(127) {
         // Major GC: 80–185 ms
         80.0 + ((tick % 7) as f64) * 15.0
-    } else if tick % 31 == 0 {
+    } else if tick.is_multiple_of(31) {
         // Minor GC: 8–20 ms
         8.0 + ((tick % 5) as f64) * 3.0
     } else {
@@ -209,7 +210,7 @@ impl Demo for SystemMetricsDemo {
         // ── CPU sparklines grid ──────────────────────────────────────────────
         let cpu_count = self.cpu_history.len().max(1);
         let per_row = 4usize;
-        let rows = (cpu_count + per_row - 1) / per_row;
+        let rows = cpu_count.div_ceil(per_row);
 
         let row_constraints: Vec<Constraint> = (0..rows)
             .map(|_| Constraint::Ratio(1, rows as u32))

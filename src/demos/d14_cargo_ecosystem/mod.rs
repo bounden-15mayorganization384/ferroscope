@@ -111,7 +111,7 @@ impl Demo for CargoDemo {
             return;
         }
         self.tick_count = self.tick_count.wrapping_add(1);
-        if self.tick_count % 10 == 0 {
+        if self.tick_count.is_multiple_of(10) {
             self.dep_tree_frame = (self.dep_tree_frame + 1) % dep_tree_lines().len();
         }
         self.build_progress = (self.build_progress + 0.02 * self.speed as f64).min(1.0);

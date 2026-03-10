@@ -32,6 +32,7 @@ pub const ACHIEVEMENT_CONNOISSEUR: u32 = 1 << 2; // visit all 3 Advanced demos (
 pub const ACHIEVEMENT_SPEEDRUNNER: u32 = 1 << 3; // complete all 15 in one session (same session = same as completionist)
 pub const ACHIEVEMENT_EVANGELIST: u32 = 1 << 4; // awarded externally when tour mode completes
 
+#[allow(dead_code)]
 pub const ACHIEVEMENT_NAMES: &[(&str, &str)] = &[
     ("Explorer", "Visited 5 demos"),
     ("Completionist", "Visited all 15 demos"),
@@ -157,7 +158,7 @@ impl App {
         self.tick_count = self.tick_count.wrapping_add(1);
         self.fact_tick = self.fact_tick.wrapping_add(1);
         // Advance crab frame every 8 ticks
-        if self.tick_count % 8 == 0 {
+        if self.tick_count.is_multiple_of(8) {
             self.crab_frame = (self.crab_frame + 1) % CRAB_FRAMES.len() as u8;
         }
         // Decrement konami countdown
@@ -181,14 +182,17 @@ impl App {
         self.speed = s.clamp(1, 10);
     }
 
+    #[allow(dead_code)]
     pub fn scroll_explanation_up(&mut self) {
         self.explanation_scroll = self.explanation_scroll.saturating_sub(1);
     }
 
+    #[allow(dead_code)]
     pub fn scroll_explanation_down(&mut self) {
         self.explanation_scroll = self.explanation_scroll.saturating_add(1);
     }
 
+    #[allow(dead_code)]
     pub fn reset_explanation_scroll(&mut self) {
         self.explanation_scroll = 0;
     }
@@ -274,6 +278,7 @@ impl App {
     // ── Konami code ───────────────────────────────────────────────────────────
 
     /// Returns the expected Konami sequence.
+    #[allow(dead_code)]
     pub fn konami_sequence() -> &'static [KeyCode] {
         KONAMI_SEQUENCE
     }

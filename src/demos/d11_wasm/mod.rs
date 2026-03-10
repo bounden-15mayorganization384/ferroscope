@@ -66,6 +66,7 @@ pub fn wasm_section_proportions() -> Vec<(&'static str, f64)> {
 }
 
 /// Binary size comparison between Rust WASM and other languages.
+#[allow(dead_code)]
 pub fn size_comparison_table() -> Vec<(&'static str, &'static str)> {
     vec![
         ("Rust (release + strip)", "~35 KB"),
@@ -137,7 +138,7 @@ impl Demo for WasmDemo {
 
     fn render(&self, frame: &mut Frame, area: Rect) {
         // Pulsing title color based on animation_frame
-        let pulse = if self.animation_frame % 2 == 0 {
+        let pulse = if self.animation_frame.is_multiple_of(2) {
             theme::ASYNC_PURPLE
         } else {
             theme::HEAP_BLUE

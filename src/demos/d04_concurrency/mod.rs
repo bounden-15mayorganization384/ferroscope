@@ -20,6 +20,7 @@ pub enum ThreadVizState {
 }
 
 impl ThreadVizState {
+    #[allow(dead_code)]
     pub fn symbol(&self) -> &'static str {
         match self {
             ThreadVizState::Spawning => "⟳ SPAWNING",
@@ -29,6 +30,7 @@ impl ThreadVizState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn color(&self) -> ratatui::style::Color {
         match self {
             ThreadVizState::Spawning => theme::BORROW_YELLOW,
@@ -43,6 +45,7 @@ impl ThreadVizState {
 #[derive(Debug, Clone)]
 pub struct ThreadViz {
     pub id: usize,
+    #[allow(dead_code)]
     pub label: String,
     pub state: ThreadVizState,
     pub progress: f64, // 0.0..=1.0

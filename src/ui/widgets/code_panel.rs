@@ -35,6 +35,7 @@ impl CodePanel {
         });
     }
 
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.lines.clear();
     }

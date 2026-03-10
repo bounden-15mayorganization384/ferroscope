@@ -12,6 +12,7 @@ use thiserror::Error;
 const STEPS: usize = 6;
 
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum AppError {
     #[error("IO error: {0}")]
     Io(String),
@@ -57,6 +58,7 @@ pub fn simulate_error_chain(depth: usize) -> Vec<String> {
     lines
 }
 
+#[allow(dead_code)]
 pub fn categorize_error(err: &AppError) -> &'static str {
     match err {
         AppError::Io(_) => "recoverable",
