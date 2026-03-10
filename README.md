@@ -22,7 +22,7 @@ cargo build
 
 ## 💻 Usage
 
-More documentation coming soon!
+Documentation coming soon!
 
 ## 🤝 Contributing
 
