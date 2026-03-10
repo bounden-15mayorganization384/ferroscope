@@ -54,13 +54,24 @@ pub fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
 
     let fact = facts[fact_idx];
 
-    // Creep the fact string into view from the right over the first 30 ticks
-    let visible_chars = if scroll_tick < 30 {
-        (fact.len() * scroll_tick as usize / 30).min(fact.len())
+    // Creep the fact string into view from the right over the first 30 ticks.
+    // Use char count (not byte length) so multi-byte characters don't cause
+    // a byte-boundary panic when slicing.
+    let char_count = fact.chars().count();
+    let visible_char_count = if scroll_tick < 30 {
+        (char_count * scroll_tick as usize / 30).min(char_count)
     } else {
-        fact.len()
+        char_count
     };
-    let fact_display = &fact[..visible_chars];
+    let fact_display = if visible_char_count == 0 {
+        ""
+    } else {
+        // Find the byte offset of the visible_char_count-th character boundary.
+        fact.char_indices()
+            .nth(visible_char_count)
+            .map(|(byte_i, _)| &fact[..byte_i])
+            .unwrap_or(fact) // nth returns None when visible_char_count >= char_count
+    };
 
     let speed_text = format!("Speed:{}x", app.speed);
     let pause_hint = if app.paused {
@@ -155,6 +166,24 @@ mod tests {
         let backend = TestBackend::new(120, 2);
         let mut terminal = Terminal::new(backend).unwrap();
         terminal.draw(|f| render_footer(f, f.area(), &app)).unwrap();
+    }
+
+    #[test]
+    fn test_render_multibyte_fact_mid_scroll() {
+        // Fact index 12 contains an em-dash (—, 3 bytes).
+        // scroll_tick values 1-29 used to panic on byte-boundary slicing.
+        let facts = rust_facts();
+        let emdash_fact_idx = facts
+            .iter()
+            .position(|f| f.contains('—'))
+            .expect("expected at least one fact with an em-dash");
+        let mut app = App::new(15);
+        for tick_offset in [5u64, 10, 15, 20, 25] {
+            app.fact_tick = emdash_fact_idx as u64 * 90 + tick_offset;
+            let backend = TestBackend::new(120, 2);
+            let mut terminal = Terminal::new(backend).unwrap();
+            terminal.draw(|f| render_footer(f, f.area(), &app)).unwrap();
+        }
     }
 
     #[test]
