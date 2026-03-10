@@ -66,6 +66,9 @@ pub struct App {
     konami_buffer: Vec<KeyCode>,
     pub konami_active: bool,
     pub konami_countdown: u64,
+
+    // Explanation panel
+    pub explanation_scroll: u16,
 }
 
 impl App {
@@ -87,6 +90,7 @@ impl App {
             konami_buffer: Vec::with_capacity(10),
             konami_active: false,
             konami_countdown: 0,
+            explanation_scroll: 0,
         }
     }
 
@@ -101,10 +105,25 @@ impl App {
             AppEvent::SpeedUp => self.set_speed(self.speed.saturating_add(1)),
             AppEvent::SpeedDown => self.set_speed(self.speed.saturating_sub(1)),
             AppEvent::ToggleHelp => self.show_help = !self.show_help,
-            AppEvent::ToggleExplanation => self.show_explanation = !self.show_explanation,
+            AppEvent::ToggleExplanation => {
+                self.show_explanation = !self.show_explanation;
+                if !self.show_explanation {
+                    self.explanation_scroll = 0;
+                }
+            }
             AppEvent::Screenshot => { /* handled externally */ }
             AppEvent::ToggleVsMode => { /* handled externally by demo registry */ }
             AppEvent::Tick => self.tick(),
+            AppEvent::ScrollUp => {
+                if self.show_explanation {
+                    self.explanation_scroll = self.explanation_scroll.saturating_sub(1);
+                }
+            }
+            AppEvent::ScrollDown => {
+                if self.show_explanation {
+                    self.explanation_scroll = self.explanation_scroll.saturating_add(1);
+                }
+            }
         }
     }
 
@@ -158,6 +177,18 @@ impl App {
 
     pub fn set_speed(&mut self, s: u8) {
         self.speed = s.clamp(1, 10);
+    }
+
+    pub fn scroll_explanation_up(&mut self) {
+        self.explanation_scroll = self.explanation_scroll.saturating_sub(1);
+    }
+
+    pub fn scroll_explanation_down(&mut self) {
+        self.explanation_scroll = self.explanation_scroll.saturating_add(1);
+    }
+
+    pub fn reset_explanation_scroll(&mut self) {
+        self.explanation_scroll = 0;
     }
 
     // ── Exploration tracking ──────────────────────────────────────────────────
@@ -279,6 +310,7 @@ mod tests {
         assert_eq!(app.fact_tick, 0);
         assert_eq!(app.achievements_unlocked, 0);
         assert!(!app.konami_active);
+        assert_eq!(app.explanation_scroll, 0);
     }
 
     #[test]
@@ -459,6 +491,107 @@ mod tests {
         assert!(app.show_explanation);
         app.handle_event(AppEvent::ToggleExplanation);
         assert!(!app.show_explanation);
+    }
+
+    #[test]
+    fn test_explanation_scroll_starts_at_zero() {
+        let app = App::new(1);
+        assert_eq!(app.explanation_scroll, 0);
+    }
+
+    #[test]
+    fn test_scroll_explanation_down_increments() {
+        let mut app = App::new(1);
+        app.scroll_explanation_down();
+        assert_eq!(app.explanation_scroll, 1);
+        app.scroll_explanation_down();
+        assert_eq!(app.explanation_scroll, 2);
+    }
+
+    #[test]
+    fn test_scroll_explanation_up_decrements() {
+        let mut app = App::new(1);
+        app.explanation_scroll = 5;
+        app.scroll_explanation_up();
+        assert_eq!(app.explanation_scroll, 4);
+    }
+
+    #[test]
+    fn test_scroll_explanation_up_saturates_at_zero() {
+        let mut app = App::new(1);
+        app.explanation_scroll = 0;
+        app.scroll_explanation_up();
+        assert_eq!(app.explanation_scroll, 0); // saturating_sub, no underflow
+    }
+
+    #[test]
+    fn test_reset_explanation_scroll() {
+        let mut app = App::new(1);
+        app.explanation_scroll = 42;
+        app.reset_explanation_scroll();
+        assert_eq!(app.explanation_scroll, 0);
+    }
+
+    #[test]
+    fn test_scroll_down_saturates_at_max() {
+        let mut app = App::new(1);
+        app.explanation_scroll = u16::MAX;
+        app.scroll_explanation_down(); // saturating_add stays at MAX
+        assert_eq!(app.explanation_scroll, u16::MAX);
+    }
+
+    #[test]
+    fn test_handle_event_scroll_down_when_shown() {
+        let mut app = App::new(1);
+        app.show_explanation = true;
+        app.handle_event(AppEvent::ScrollDown);
+        assert_eq!(app.explanation_scroll, 1);
+    }
+
+    #[test]
+    fn test_handle_event_scroll_up_when_shown() {
+        let mut app = App::new(1);
+        app.show_explanation = true;
+        app.explanation_scroll = 3;
+        app.handle_event(AppEvent::ScrollUp);
+        assert_eq!(app.explanation_scroll, 2);
+    }
+
+    #[test]
+    fn test_handle_event_scroll_down_when_hidden_noop() {
+        let mut app = App::new(1);
+        app.show_explanation = false;
+        app.handle_event(AppEvent::ScrollDown);
+        assert_eq!(app.explanation_scroll, 0); // not shown → no change
+    }
+
+    #[test]
+    fn test_handle_event_scroll_up_when_hidden_noop() {
+        let mut app = App::new(1);
+        app.show_explanation = false;
+        app.explanation_scroll = 5;
+        app.handle_event(AppEvent::ScrollUp);
+        assert_eq!(app.explanation_scroll, 5); // not shown → no change
+    }
+
+    #[test]
+    fn test_toggle_explanation_off_resets_scroll() {
+        let mut app = App::new(1);
+        app.show_explanation = true;
+        app.explanation_scroll = 7;
+        app.handle_event(AppEvent::ToggleExplanation); // turns off
+        assert!(!app.show_explanation);
+        assert_eq!(app.explanation_scroll, 0);
+    }
+
+    #[test]
+    fn test_toggle_explanation_on_preserves_zero_scroll() {
+        let mut app = App::new(1);
+        app.show_explanation = false;
+        app.explanation_scroll = 0;
+        app.handle_event(AppEvent::ToggleExplanation); // turns on
+        assert!(app.show_explanation);
+        assert_eq!(app.explanation_scroll, 0);
     }
 
     #[test]

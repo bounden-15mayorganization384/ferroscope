@@ -15,6 +15,8 @@ pub enum AppEvent {
     Screenshot,
     ToggleVsMode,
     Tick,
+    ScrollUp,
+    ScrollDown,
 }
 
 pub fn key_event_to_app_event(key: KeyEvent) -> Option<AppEvent> {
@@ -45,6 +47,8 @@ pub fn key_event_to_app_event(key: KeyEvent) -> Option<AppEvent> {
         KeyCode::Char('e') | KeyCode::Char('E') => Some(AppEvent::ToggleExplanation),
         KeyCode::Char('s') | KeyCode::Char('S') => Some(AppEvent::Screenshot),
         KeyCode::Char('v') | KeyCode::Char('V') => Some(AppEvent::ToggleVsMode),
+        KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => Some(AppEvent::ScrollUp),
+        KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => Some(AppEvent::ScrollDown),
         _ => None,
     }
 }
@@ -113,5 +117,19 @@ mod tests {
         assert_eq!(key_event_to_app_event(key(KeyCode::Tab)), None);
         assert_eq!(key_event_to_app_event(key(KeyCode::Backspace)), None);
         assert_eq!(key_event_to_app_event(key(KeyCode::Char('z'))), None);
+    }
+
+    #[test]
+    fn test_scroll_up_keys() {
+        assert_eq!(key_event_to_app_event(key(KeyCode::Up)), Some(AppEvent::ScrollUp));
+        assert_eq!(key_event_to_app_event(key(KeyCode::Char('k'))), Some(AppEvent::ScrollUp));
+        assert_eq!(key_event_to_app_event(key(KeyCode::Char('K'))), Some(AppEvent::ScrollUp));
+    }
+
+    #[test]
+    fn test_scroll_down_keys() {
+        assert_eq!(key_event_to_app_event(key(KeyCode::Down)), Some(AppEvent::ScrollDown));
+        assert_eq!(key_event_to_app_event(key(KeyCode::Char('j'))), Some(AppEvent::ScrollDown));
+        assert_eq!(key_event_to_app_event(key(KeyCode::Char('J'))), Some(AppEvent::ScrollDown));
     }
 }

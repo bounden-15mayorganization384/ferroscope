@@ -52,7 +52,8 @@ fn render_explanation_panel(frame: &mut Frame, area: Rect, app: &App, registry: 
                 .border_style(Style::default().fg(theme::BORROW_YELLOW)),
         )
         .style(Style::default().fg(Color::White))
-        .wrap(ratatui::widgets::Wrap { trim: true });
+        .wrap(ratatui::widgets::Wrap { trim: true })
+        .scroll((app.explanation_scroll, 0));
 
     frame.render_widget(Clear, right);
     frame.render_widget(para, right);
@@ -162,6 +163,28 @@ mod tests {
     fn test_draw_with_explanation() {
         let mut app = App::new(15);
         app.show_explanation = true;
+        let registry = DemoRegistry::new();
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| draw(f, &app, &registry)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_with_explanation_scrolled() {
+        let mut app = App::new(15);
+        app.show_explanation = true;
+        app.explanation_scroll = 3;
+        let registry = DemoRegistry::new();
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| draw(f, &app, &registry)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_explanation_scroll_zero_unchanged() {
+        let mut app = App::new(15);
+        app.show_explanation = true;
+        app.explanation_scroll = 0;
         let registry = DemoRegistry::new();
         let backend = TestBackend::new(120, 40);
         let mut terminal = Terminal::new(backend).unwrap();

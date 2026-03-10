@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Bar, BarChart, BarGroup, Block, Borders, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use crate::{demos::Demo, theme, ui::widgets::SparklineExt};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BenchPhase {
@@ -128,7 +128,7 @@ impl Demo for ZeroCostDemo {
     fn render(&self, frame: &mut Frame, area: Rect) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Min(10), Constraint::Length(5)])
+            .constraints([Constraint::Length(3), Constraint::Min(8), Constraint::Length(5), Constraint::Length(5)])
             .split(area);
 
         // Title — shows live phase status
@@ -201,6 +201,19 @@ impl Demo for ZeroCostDemo {
                 .block(Block::default().title(bar_title).borders(Borders::ALL)),
             chunks[2],
         );
+
+        // History sparklines — ns timing over last N runs
+        let hist_max = self.ns_history_iter.iter().chain(&self.ns_history_loop).copied().max().max(Some(1)).unwrap_or(1);
+        let spark_cols = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(chunks[3]);
+        let mut iter_spark = SparklineExt::new("Iterator ns history", hist_max, theme::SAFE_GREEN);
+        for &v in &self.ns_history_iter { iter_spark.push(v); }
+        iter_spark.render(frame, spark_cols[0]);
+        let mut loop_spark = SparklineExt::new("Loop ns history", hist_max, theme::HEAP_BLUE);
+        for &v in &self.ns_history_loop { loop_spark.push(v); }
+        loop_spark.render(frame, spark_cols[1]);
     }
 
     fn name(&self) -> &'static str { "Zero-Cost Abstractions" }
@@ -377,5 +390,26 @@ mod tests {
             let mut terminal = Terminal::new(backend).unwrap();
             terminal.draw(|f| d.render(f, f.area())).unwrap();
         }
+    }
+
+    #[test]
+    fn test_render_with_history() {
+        let mut d = ZeroCostDemo::new();
+        // Run bench multiple times to build history
+        for _ in 0..5 {
+            d.run_bench();
+        }
+        assert!(d.ns_history_iter.len() >= 5);
+        let backend = TestBackend::new(120, 35);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| d.render(f, f.area())).unwrap();
+    }
+
+    #[test]
+    fn test_ns_history_builds_up() {
+        let mut d = ZeroCostDemo::new();
+        assert_eq!(d.ns_history_iter.len(), 1); // new() calls run_bench once
+        d.run_bench();
+        assert_eq!(d.ns_history_iter.len(), 2);
     }
 }

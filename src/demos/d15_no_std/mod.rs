@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
 use crate::{demos::Demo, theme};
@@ -221,27 +221,48 @@ impl Demo for NoStdDemo {
             .constraints([Constraint::Min(5), Constraint::Min(3)])
             .split(main_cols[0]);
 
-        // Code snippet
-        let code_lines: Vec<Line> = no_std_code_lines(self.step)
-            .iter()
-            .map(|l| {
-                let style = if l.starts_with("//") {
-                    Style::default().fg(theme::TEXT_DIM)
-                } else {
-                    Style::default().fg(theme::SAFE_GREEN)
-                };
-                Line::from(Span::styled(*l, style))
-            })
-            .collect();
-        frame.render_widget(
-            Paragraph::new(code_lines).block(
-                Block::default()
-                    .title("Code")
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::SAFE_GREEN)),
-            ),
-            left_rows[0],
-        );
+        // Code snippet (or embedded_examples list for the final step)
+        if self.step % STEPS == STEPS - 1 {
+            let items: Vec<ListItem> = embedded_examples()
+                .iter()
+                .map(|e| {
+                    ListItem::new(Line::from(Span::styled(
+                        *e,
+                        Style::default().fg(theme::SAFE_GREEN),
+                    )))
+                })
+                .collect();
+            frame.render_widget(
+                List::new(items).block(
+                    Block::default()
+                        .title("Real-World Rust Embedded")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(theme::SAFE_GREEN)),
+                ),
+                left_rows[0],
+            );
+        } else {
+            let code_lines: Vec<Line> = no_std_code_lines(self.step)
+                .iter()
+                .map(|l| {
+                    let style = if l.starts_with("//") {
+                        Style::default().fg(theme::TEXT_DIM)
+                    } else {
+                        Style::default().fg(theme::SAFE_GREEN)
+                    };
+                    Line::from(Span::styled(*l, style))
+                })
+                .collect();
+            frame.render_widget(
+                Paragraph::new(code_lines).block(
+                    Block::default()
+                        .title("Code")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(theme::SAFE_GREEN)),
+                ),
+                left_rows[0],
+            );
+        }
 
         // Explanation text
         frame.render_widget(
@@ -550,5 +571,23 @@ mod tests {
         let dur = d.step_duration_secs();
         // 2.5 / 5 = 0.5
         assert!((dur - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_render_last_step_uses_embedded_examples() {
+        let mut d = NoStdDemo::new();
+        d.step = STEPS - 1; // final step → renders embedded_examples as List
+        let backend = TestBackend::new(120, 30);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| d.render(f, f.area())).unwrap();
+    }
+
+    #[test]
+    fn test_embedded_examples_used_only_on_last_step() {
+        // embedded_examples() should return entries for all chips
+        let examples = embedded_examples();
+        assert!(examples.iter().any(|e| e.contains("STM32")));
+        assert!(examples.iter().any(|e| e.contains("ESP32")));
+        assert!(examples.iter().any(|e| e.contains("Titan")));
     }
 }
