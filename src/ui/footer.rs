@@ -75,7 +75,12 @@ pub fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
 
     let speed_text = format!("Speed:{}x", app.speed);
     let pause_hint = if app.paused {
-        Span::styled(" ⏸ PAUSED  ", Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD))
+        Span::styled(
+            " ⏸ PAUSED  ",
+            Style::default()
+                .fg(theme::RUST_ORANGE)
+                .add_modifier(Modifier::BOLD),
+        )
     } else {
         Span::raw("")
     };
@@ -108,10 +113,7 @@ pub fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("Q: Quit", Style::default().fg(theme::CRAB_RED)),
     ]);
 
-    frame.render_widget(
-        Paragraph::new(vec![fact_line, controls_line]),
-        area,
-    );
+    frame.render_widget(Paragraph::new(vec![fact_line, controls_line]), area);
 }
 
 #[cfg(test)]
@@ -122,7 +124,11 @@ mod tests {
     #[test]
     fn test_rust_facts_count() {
         let facts = rust_facts();
-        assert!(facts.len() >= 24, "expected >= 24 facts, got {}", facts.len());
+        assert!(
+            facts.len() >= 24,
+            "expected >= 24 facts, got {}",
+            facts.len()
+        );
     }
 
     #[test]
@@ -193,6 +199,8 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         // render into a zero-height rect — should not panic
         let zero_rect = Rect::new(0, 0, 80, 0);
-        terminal.draw(|f| render_footer(f, zero_rect, &app)).unwrap();
+        terminal
+            .draw(|f| render_footer(f, zero_rect, &app))
+            .unwrap();
     }
 }

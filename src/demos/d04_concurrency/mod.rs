@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::{Duration, Instant};
 
 const STEPS: usize = 7;
 
@@ -23,18 +23,18 @@ impl ThreadVizState {
     pub fn symbol(&self) -> &'static str {
         match self {
             ThreadVizState::Spawning => "⟳ SPAWNING",
-            ThreadVizState::Running  => "► RUNNING ",
-            ThreadVizState::Waiting  => "⧗ WAITING ",
-            ThreadVizState::Done     => "✓ DONE    ",
+            ThreadVizState::Running => "► RUNNING ",
+            ThreadVizState::Waiting => "⧗ WAITING ",
+            ThreadVizState::Done => "✓ DONE    ",
         }
     }
 
     pub fn color(&self) -> ratatui::style::Color {
         match self {
             ThreadVizState::Spawning => theme::BORROW_YELLOW,
-            ThreadVizState::Running  => theme::SAFE_GREEN,
-            ThreadVizState::Waiting  => theme::CRAB_RED,
-            ThreadVizState::Done     => theme::TEXT_DIM,
+            ThreadVizState::Running => theme::SAFE_GREEN,
+            ThreadVizState::Waiting => theme::CRAB_RED,
+            ThreadVizState::Done => theme::TEXT_DIM,
         }
     }
 }
@@ -45,7 +45,7 @@ pub struct ThreadViz {
     pub id: usize,
     pub label: String,
     pub state: ThreadVizState,
-    pub progress: f64,  // 0.0..=1.0
+    pub progress: f64, // 0.0..=1.0
 }
 
 /// The main concurrency demo struct.
@@ -121,9 +121,12 @@ impl ConcurrencyDemo {
                         t.progress = 0.4;
                     }
                 }
-                self.channel_msgs.push("tx.send(\"data from worker-1\")".into());
-                self.channel_msgs.push("rx.recv() -> Ok(\"data from worker-1\")".into());
-                self.channel_msgs.push("Channel: ownership transferred, no copy".into());
+                self.channel_msgs
+                    .push("tx.send(\"data from worker-1\")".into());
+                self.channel_msgs
+                    .push("rx.recv() -> Ok(\"data from worker-1\")".into());
+                self.channel_msgs
+                    .push("Channel: ownership transferred, no copy".into());
             }
             3 => {
                 // Mutex contention: some threads waiting for the lock
@@ -134,9 +137,12 @@ impl ConcurrencyDemo {
                         _ => {}
                     }
                 }
-                self.channel_msgs.push("Mutex::lock() — T2 and T4 blocked".into());
-                self.channel_msgs.push("Rust: lock() returns MutexGuard (RAII)".into());
-                self.channel_msgs.push("Guard dropped = lock released automatically".into());
+                self.channel_msgs
+                    .push("Mutex::lock() — T2 and T4 blocked".into());
+                self.channel_msgs
+                    .push("Rust: lock() returns MutexGuard (RAII)".into());
+                self.channel_msgs
+                    .push("Guard dropped = lock released automatically".into());
             }
             4 => {
                 // Rayon parallel sort — all threads active
@@ -149,7 +155,8 @@ impl ConcurrencyDemo {
                     "rayon par_sort_unstable(10k): {:.2}x speedup",
                     self.rayon_speedup
                 ));
-                self.channel_msgs.push("Work-stealing scheduler, zero-copy data sharing".into());
+                self.channel_msgs
+                    .push("Work-stealing scheduler, zero-copy data sharing".into());
             }
             5 => {
                 // All threads joined
@@ -157,8 +164,10 @@ impl ConcurrencyDemo {
                     t.state = ThreadVizState::Done;
                     t.progress = 1.0;
                 }
-                self.channel_msgs.push("thread.join() — all workers complete".into());
-                self.channel_msgs.push("No data races. No undefined behavior. Guaranteed.".into());
+                self.channel_msgs
+                    .push("thread.join() — all workers complete".into());
+                self.channel_msgs
+                    .push("No data races. No undefined behavior. Guaranteed.".into());
             }
             _ => {
                 // Step 6: data race demo
@@ -193,8 +202,8 @@ pub fn data_race_frames() -> &'static [&'static str] {
 /// Compute speedup of rayon parallel sort vs sequential sort on n random u32s.
 /// Returns the speedup ratio (sequential_ns / parallel_ns), clamped to >= 0.1.
 pub fn compute_rayon_speedup(n: usize) -> f64 {
-    use rayon::prelude::*;
     use rand::Rng;
+    use rayon::prelude::*;
 
     let mut rng = rand::thread_rng();
     let data: Vec<u32> = (0..n).map(|_| rng.gen()).collect();
@@ -211,7 +220,9 @@ pub fn compute_rayon_speedup(n: usize) -> f64 {
     par.par_sort_unstable();
     let par_ns = t1.elapsed().as_nanos() as f64;
 
-    if par_ns < 1.0 { return 1.0; }
+    if par_ns < 1.0 {
+        return 1.0;
+    }
     (seq_ns / par_ns).max(0.1)
 }
 
@@ -228,12 +239,16 @@ pub fn step_title(step: usize) -> &'static str {
 }
 
 impl Default for ConcurrencyDemo {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Demo for ConcurrencyDemo {
     fn tick(&mut self, dt: Duration) {
-        if self.paused { return; }
+        if self.paused {
+            return;
+        }
         self.tick_count = self.tick_count.wrapping_add(1);
         self.step_timer += dt.as_secs_f64();
         if self.step_timer >= self.step_duration_secs() {
@@ -265,10 +280,15 @@ impl Demo for ConcurrencyDemo {
         frame.render_widget(
             Paragraph::new(Span::styled(
                 step_title(self.step),
-                Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme::RUST_ORANGE)
+                    .add_modifier(Modifier::BOLD),
             ))
-            .block(Block::default().borders(Borders::ALL)
-                .border_style(Style::default().fg(theme::RUST_ORANGE))),
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::RUST_ORANGE)),
+            ),
             chunks[0],
         );
 
@@ -290,7 +310,9 @@ impl Demo for ConcurrencyDemo {
                 Line::from(""),
                 Line::from(Span::styled(
                     race_text,
-                    Style::default().fg(theme::CRAB_RED).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(theme::CRAB_RED)
+                        .add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
                 Line::from(Span::styled(
@@ -299,11 +321,12 @@ impl Demo for ConcurrencyDemo {
                 )),
             ];
             frame.render_widget(
-                Paragraph::new(left_lines)
-                    .block(Block::default()
+                Paragraph::new(left_lines).block(
+                    Block::default()
                         .title("Data Race — Thread Interleaving")
                         .borders(Borders::ALL)
-                        .border_style(Style::default().fg(theme::CRAB_RED))),
+                        .border_style(Style::default().fg(theme::CRAB_RED)),
+                ),
                 dr_panels[0],
             );
 
@@ -311,7 +334,9 @@ impl Demo for ConcurrencyDemo {
             let right_lines = vec![
                 Line::from(Span::styled(
                     "In Rust: this code does NOT compile.",
-                    Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(theme::SAFE_GREEN)
+                        .add_modifier(Modifier::BOLD),
                 )),
                 Line::from(Span::styled(
                     "Arc<Mutex<T>> required.",
@@ -333,11 +358,12 @@ impl Demo for ConcurrencyDemo {
                 )),
             ];
             frame.render_widget(
-                Paragraph::new(right_lines)
-                    .block(Block::default()
+                Paragraph::new(right_lines).block(
+                    Block::default()
                         .title("Rust: Compile Error")
                         .borders(Borders::ALL)
-                        .border_style(Style::default().fg(theme::SAFE_GREEN))),
+                        .border_style(Style::default().fg(theme::SAFE_GREEN)),
+                ),
                 dr_panels[1],
             );
         } else {
@@ -350,7 +376,9 @@ impl Demo for ConcurrencyDemo {
             let mut chart = crate::ui::widgets::ThreadLaneChart::new(self.threads.len());
             for thread in &self.threads {
                 let ws = match thread.state {
-                    ThreadVizState::Spawning | ThreadVizState::Running => crate::ui::widgets::ThreadState::Running,
+                    ThreadVizState::Spawning | ThreadVizState::Running => {
+                        crate::ui::widgets::ThreadState::Running
+                    }
                     ThreadVizState::Waiting => crate::ui::widgets::ThreadState::Waiting,
                     ThreadVizState::Done => crate::ui::widgets::ThreadState::Done,
                 };
@@ -360,16 +388,23 @@ impl Demo for ConcurrencyDemo {
             chart.render(frame, mid[0]);
 
             // Channel / event log
-            let log_items: Vec<ListItem> = self.channel_msgs.iter().map(|m| {
-                ListItem::new(Line::from(Span::styled(
-                    format!("  > {}", m),
-                    theme::dim_style(),
-                )))
-            }).collect();
+            let log_items: Vec<ListItem> = self
+                .channel_msgs
+                .iter()
+                .map(|m| {
+                    ListItem::new(Line::from(Span::styled(
+                        format!("  > {}", m),
+                        theme::dim_style(),
+                    )))
+                })
+                .collect();
             frame.render_widget(
-                List::new(log_items)
-                    .block(Block::default().title("Events / Channel Log").borders(Borders::ALL)
-                        .border_style(Style::default().fg(theme::HEAP_BLUE))),
+                List::new(log_items).block(
+                    Block::default()
+                        .title("Events / Channel Log")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(theme::HEAP_BLUE)),
+                ),
                 mid[1],
             );
         }
@@ -398,7 +433,9 @@ impl Demo for ConcurrencyDemo {
             ),
             Span::styled(
                 format!("rayon speedup: {}", speedup_str),
-                Style::default().fg(speedup_color).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(speedup_color)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]);
         frame.render_widget(
@@ -407,8 +444,12 @@ impl Demo for ConcurrencyDemo {
         );
     }
 
-    fn name(&self) -> &'static str { "Fearless Concurrency" }
-    fn description(&self) -> &'static str { "Thread safety enforced at compile time — data races are impossible." }
+    fn name(&self) -> &'static str {
+        "Fearless Concurrency"
+    }
+    fn description(&self) -> &'static str {
+        "Thread safety enforced at compile time — data races are impossible."
+    }
     fn explanation(&self) -> &'static str {
         "Rust's ownership and type system makes data races impossible at compile time. \
         The Send and Sync traits control what can cross thread boundaries. \
@@ -428,10 +469,18 @@ impl Demo for ConcurrencyDemo {
         self.paused = false;
         self.apply_step();
     }
-    fn toggle_pause(&mut self) { self.paused = !self.paused; }
-    fn is_paused(&self) -> bool { self.paused }
-    fn set_speed(&mut self, speed: u8) { self.speed = speed.clamp(1, 10); }
-    fn speed(&self) -> u8 { self.speed }
+    fn toggle_pause(&mut self) {
+        self.paused = !self.paused;
+    }
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+    fn set_speed(&mut self, speed: u8) {
+        self.speed = speed.clamp(1, 10);
+    }
+    fn speed(&self) -> u8 {
+        self.speed
+    }
 }
 
 #[cfg(test)]
@@ -528,24 +577,40 @@ mod tests {
         let mut d = ConcurrencyDemo::new();
         d.advance_step(); // step 1: spawn
         d.advance_step(); // step 2: running
-        let running = d.threads.iter().filter(|t| t.state == ThreadVizState::Running).count();
+        let running = d
+            .threads
+            .iter()
+            .filter(|t| t.state == ThreadVizState::Running)
+            .count();
         assert!(running >= 1);
     }
 
     #[test]
     fn test_step_3_mutex_contention() {
         let mut d = ConcurrencyDemo::new();
-        for _ in 0..3 { d.advance_step(); }
+        for _ in 0..3 {
+            d.advance_step();
+        }
         assert!(d.mutex_contention_count > 0);
-        let waiting = d.threads.iter().filter(|t| t.state == ThreadVizState::Waiting).count();
+        let waiting = d
+            .threads
+            .iter()
+            .filter(|t| t.state == ThreadVizState::Waiting)
+            .count();
         assert!(waiting > 0);
     }
 
     #[test]
     fn test_step_5_done_state() {
         let mut d = ConcurrencyDemo::new();
-        for _ in 0..5 { d.advance_step(); }
-        let done = d.threads.iter().filter(|t| t.state == ThreadVizState::Done).count();
+        for _ in 0..5 {
+            d.advance_step();
+        }
+        let done = d
+            .threads
+            .iter()
+            .filter(|t| t.state == ThreadVizState::Done)
+            .count();
         assert!(done > 0);
     }
 
@@ -617,7 +682,9 @@ mod tests {
     #[test]
     fn test_channel_msgs_accumulate() {
         let mut d = ConcurrencyDemo::new();
-        for _ in 0..3 { d.advance_step(); }
+        for _ in 0..3 {
+            d.advance_step();
+        }
         assert!(!d.channel_msgs.is_empty());
     }
 
@@ -626,14 +693,22 @@ mod tests {
     #[test]
     fn test_step_6_data_race_title() {
         let t = step_title(6);
-        assert!(t.contains("Data Race"), "expected 'Data Race' in title, got: {}", t);
+        assert!(
+            t.contains("Data Race"),
+            "expected 'Data Race' in title, got: {}",
+            t
+        );
         assert!(!t.is_empty());
     }
 
     #[test]
     fn test_data_race_frames_nonempty() {
         let frames = data_race_frames();
-        assert!(frames.len() >= 4, "expected >= 4 frames, got {}", frames.len());
+        assert!(
+            frames.len() >= 4,
+            "expected >= 4 frames, got {}",
+            frames.len()
+        );
         for f in frames {
             assert!(!f.is_empty());
         }
@@ -649,7 +724,10 @@ mod tests {
         assert_eq!(d.step, 6);
         assert_eq!(d.data_race_frame, 0);
         d.tick(Duration::from_millis(10));
-        assert!(d.data_race_frame > 0, "data_race_frame should have incremented");
+        assert!(
+            d.data_race_frame > 0,
+            "data_race_frame should have incremented"
+        );
     }
 
     #[test]
@@ -659,7 +737,10 @@ mod tests {
         for _ in 0..10 {
             d.tick(Duration::from_millis(10));
         }
-        assert_eq!(d.data_race_frame, 0, "data_race_frame should stay 0 on step 0");
+        assert_eq!(
+            d.data_race_frame, 0,
+            "data_race_frame should stay 0 on step 0"
+        );
     }
 
     #[test]

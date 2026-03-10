@@ -4,9 +4,16 @@ use crate::events::AppEvent;
 
 // Konami sequence: Up Up Down Down Left Right Left Right b a
 const KONAMI_SEQUENCE: &[KeyCode] = &[
-    KeyCode::Up, KeyCode::Up, KeyCode::Down, KeyCode::Down,
-    KeyCode::Left, KeyCode::Right, KeyCode::Left, KeyCode::Right,
-    KeyCode::Char('b'), KeyCode::Char('a'),
+    KeyCode::Up,
+    KeyCode::Up,
+    KeyCode::Down,
+    KeyCode::Down,
+    KeyCode::Left,
+    KeyCode::Right,
+    KeyCode::Left,
+    KeyCode::Right,
+    KeyCode::Char('b'),
+    KeyCode::Char('a'),
 ];
 
 /// Ticks that Konami mode stays active (180 ticks ≈ 6s at 30fps)
@@ -16,26 +23,21 @@ const KONAMI_ACTIVE_TICKS: u64 = 180;
 const ACHIEVEMENT_FLASH_TICKS: u64 = 60;
 
 /// Animated Ferris crab frames (cycling via tick_count).
-const CRAB_FRAMES: &[&str] = &[
-    "( •_•)  ",
-    "( •_•)> ",
-    "(>•_•)> ",
-    "( •_•)  ",
-];
+const CRAB_FRAMES: &[&str] = &["( •_•)  ", "( •_•)> ", "(>•_•)> ", "( •_•)  "];
 
 /// Achievement bit indices and names.
-pub const ACHIEVEMENT_EXPLORER: u32    = 1 << 0; // visit 5 demos
+pub const ACHIEVEMENT_EXPLORER: u32 = 1 << 0; // visit 5 demos
 pub const ACHIEVEMENT_COMPLETIONIST: u32 = 1 << 1; // visit all 15 demos
 pub const ACHIEVEMENT_CONNOISSEUR: u32 = 1 << 2; // visit all 3 Advanced demos (9,10,14)
 pub const ACHIEVEMENT_SPEEDRUNNER: u32 = 1 << 3; // complete all 15 in one session (same session = same as completionist)
-pub const ACHIEVEMENT_EVANGELIST: u32  = 1 << 4; // awarded externally when tour mode completes
+pub const ACHIEVEMENT_EVANGELIST: u32 = 1 << 4; // awarded externally when tour mode completes
 
 pub const ACHIEVEMENT_NAMES: &[(&str, &str)] = &[
-    ("Explorer",       "Visited 5 demos"),
-    ("Completionist",  "Visited all 15 demos"),
-    ("Connoisseur",    "Played every Advanced demo"),
-    ("Speedrunner",    "Blazed through all demos"),
-    ("Rust Evangelist","Completed the guided tour"),
+    ("Explorer", "Visited 5 demos"),
+    ("Completionist", "Visited all 15 demos"),
+    ("Connoisseur", "Played every Advanced demo"),
+    ("Speedrunner", "Blazed through all demos"),
+    ("Rust Evangelist", "Completed the guided tour"),
 ];
 
 #[derive(Debug)]
@@ -50,13 +52,13 @@ pub struct App {
     pub paused: bool,
 
     // Exploration tracking
-    pub visited_demos: u32,   // bitfield: bit N set when demo N visited
+    pub visited_demos: u32, // bitfield: bit N set when demo N visited
 
     // Animation helpers
-    pub crab_frame: u8,       // advances every 8 ticks
+    pub crab_frame: u8, // advances every 8 ticks
 
     // Rust Facts ticker
-    pub fact_tick: u64,       // independent counter; increments on Tick
+    pub fact_tick: u64, // independent counter; increments on Tick
 
     // Gamification
     pub achievements_unlocked: u32,
@@ -195,7 +197,9 @@ impl App {
 
     /// Mark demo `idx` as visited and check for new achievements.
     pub fn visit(&mut self, idx: usize) {
-        if idx >= 32 { return; }
+        if idx >= 32 {
+            return;
+        }
         self.visited_demos |= 1u32 << idx;
         if let Some(name) = self.check_achievements() {
             self.achievement_flash = Some((name, self.tick_count + ACHIEVEMENT_FLASH_TICKS));
@@ -255,7 +259,8 @@ impl App {
     pub fn unlock_evangelist(&mut self) {
         if (self.achievements_unlocked & ACHIEVEMENT_EVANGELIST) == 0 {
             self.achievements_unlocked |= ACHIEVEMENT_EVANGELIST;
-            self.achievement_flash = Some(("Rust Evangelist", self.tick_count + ACHIEVEMENT_FLASH_TICKS));
+            self.achievement_flash =
+                Some(("Rust Evangelist", self.tick_count + ACHIEVEMENT_FLASH_TICKS));
         }
     }
 
@@ -393,7 +398,9 @@ mod tests {
     #[test]
     fn test_crab_frame_advances_every_8_ticks() {
         let mut app = App::new(1);
-        for _ in 0..7 { app.tick(); }
+        for _ in 0..7 {
+            app.tick();
+        }
         assert_eq!(app.crab_frame, 0);
         app.tick(); // 8th tick
         assert_eq!(app.crab_frame, 1);
@@ -641,7 +648,9 @@ mod tests {
     #[test]
     fn test_achievement_explorer_unlocks_at_5() {
         let mut app = App::new(15);
-        for i in 0..4 { app.visit(i); }
+        for i in 0..4 {
+            app.visit(i);
+        }
         assert_eq!(app.achievements_unlocked & ACHIEVEMENT_EXPLORER, 0);
         app.visit(4);
         assert_ne!(app.achievements_unlocked & ACHIEVEMENT_EXPLORER, 0);
@@ -650,7 +659,8 @@ mod tests {
     #[test]
     fn test_achievement_completionist_unlocks_all() {
         let mut app = App::new(3);
-        app.visit(0); app.visit(1);
+        app.visit(0);
+        app.visit(1);
         assert_eq!(app.achievements_unlocked & ACHIEVEMENT_COMPLETIONIST, 0);
         app.visit(2);
         assert_ne!(app.achievements_unlocked & ACHIEVEMENT_COMPLETIONIST, 0);
@@ -659,7 +669,8 @@ mod tests {
     #[test]
     fn test_achievement_connoisseur() {
         let mut app = App::new(15);
-        app.visit(9); app.visit(10);
+        app.visit(9);
+        app.visit(10);
         assert_eq!(app.achievements_unlocked & ACHIEVEMENT_CONNOISSEUR, 0);
         app.visit(14);
         assert_ne!(app.achievements_unlocked & ACHIEVEMENT_CONNOISSEUR, 0);
@@ -719,7 +730,9 @@ mod tests {
     fn test_konami_wrong_sequence_no_activate() {
         let mut app = App::new(15);
         let wrong = [KeyCode::Char('z'); 10];
-        for key in wrong { app.check_konami(key); }
+        for key in wrong {
+            app.check_konami(key);
+        }
         assert!(!app.konami_active);
     }
 

@@ -13,7 +13,9 @@ pub const TEXT_PRIMARY: Color = Color::White;
 pub const TEXT_DIM: Color = Color::Rgb(150, 150, 165);
 
 pub fn title_style() -> Style {
-    Style::default().fg(RUST_ORANGE).add_modifier(Modifier::BOLD)
+    Style::default()
+        .fg(RUST_ORANGE)
+        .add_modifier(Modifier::BOLD)
 }
 
 pub fn label_style() -> Style {

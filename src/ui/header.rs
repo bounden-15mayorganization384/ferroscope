@@ -49,7 +49,12 @@ pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     let crab = App::crab_frame_str(app.crab_frame);
 
     let paused_span = if app.paused {
-        Span::styled("  ⏸ PAUSED", Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD))
+        Span::styled(
+            "  ⏸ PAUSED",
+            Style::default()
+                .fg(theme::RUST_ORANGE)
+                .add_modifier(Modifier::BOLD),
+        )
     } else {
         Span::raw("")
     };
@@ -57,12 +62,18 @@ pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     let title_line = Line::from(vec![
         Span::styled(crab, Style::default().fg(theme::CRAB_RED)),
         Span::styled(" 🦀 ", Style::default()),
-        Span::styled("FERROSCOPE", Style::default()
-            .fg(theme::RUST_ORANGE)
-            .add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "FERROSCOPE",
+            Style::default()
+                .fg(theme::RUST_ORANGE)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled("  │  Rust Capabilities Explorer", theme::dim_style()),
         Span::styled(
-            format!("  │  v0.1.0  │  Speed:{}x  │  tick:{}", app.speed, app.tick_count),
+            format!(
+                "  │  v0.1.0  │  Speed:{}x  │  tick:{}",
+                app.speed, app.tick_count
+            ),
             theme::dim_style(),
         ),
         paused_span,
@@ -103,7 +114,9 @@ pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         };
         let konami_line = Line::from(Span::styled(
             pulse,
-            Style::default().fg(theme::CRAB_RED).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme::CRAB_RED)
+                .add_modifier(Modifier::BOLD),
         ));
         frame.render_widget(Paragraph::new(konami_line), inner_chunks[2]);
     }
@@ -149,7 +162,9 @@ mod tests {
     #[test]
     fn test_render_all_demos_visited() {
         let mut app = make_app(false);
-        for i in 0..15 { app.visit(i); }
+        for i in 0..15 {
+            app.visit(i);
+        }
         let backend = TestBackend::new(120, 7);
         let mut terminal = Terminal::new(backend).unwrap();
         terminal.draw(|f| render_header(f, f.area(), &app)).unwrap();

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 const STEPS: usize = 6;
 
@@ -352,10 +352,7 @@ impl Demo for CompileTimeDemo {
         // Stats bar
         frame.render_widget(
             Paragraph::new(Line::from(vec![
-                Span::styled(
-                    "  Bugs caught at compile time: ",
-                    theme::dim_style(),
-                ),
+                Span::styled("  Bugs caught at compile time: ", theme::dim_style()),
                 Span::styled(
                     format!("{}", self.bugs_caught_compile_time),
                     Style::default()
@@ -363,14 +360,8 @@ impl Demo for CompileTimeDemo {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled("   Bugs caught at runtime: ", theme::dim_style()),
-                Span::styled(
-                    "0",
-                    Style::default().fg(theme::CRAB_RED),
-                ),
-                Span::styled(
-                    "   (Zero runtime surprises)",
-                    theme::dim_style(),
-                ),
+                Span::styled("0", Style::default().fg(theme::CRAB_RED)),
+                Span::styled("   (Zero runtime surprises)", theme::dim_style()),
             ]))
             .block(
                 Block::default()

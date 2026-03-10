@@ -22,11 +22,17 @@ pub struct CodePanel {
 
 impl CodePanel {
     pub fn new(title: impl Into<String>) -> Self {
-        Self { title: title.into(), lines: Vec::new() }
+        Self {
+            title: title.into(),
+            lines: Vec::new(),
+        }
     }
 
     pub fn push_line(&mut self, content: impl Into<String>, highlight: bool) {
-        self.lines.push(CodeLine { content: content.into(), highlight });
+        self.lines.push(CodeLine {
+            content: content.into(),
+            highlight,
+        });
     }
 
     pub fn clear(&mut self) {
@@ -34,24 +40,28 @@ impl CodePanel {
     }
 
     pub fn render(&self, frame: &mut Frame, area: Rect) {
-        let ratatui_lines: Vec<Line> = self.lines.iter().map(|l| {
-            if l.highlight {
-                Line::from(Span::styled(
-                    format!("▶ {}", l.content),
-                    Style::default()
-                        .fg(theme::SAFE_GREEN)
-                        .add_modifier(Modifier::BOLD),
-                ))
-            } else {
-                Line::from(Span::styled(
-                    format!("  {}", l.content),
-                    theme::dim_style(),
-                ))
-            }
-        }).collect();
+        let ratatui_lines: Vec<Line> = self
+            .lines
+            .iter()
+            .map(|l| {
+                if l.highlight {
+                    Line::from(Span::styled(
+                        format!("▶ {}", l.content),
+                        Style::default()
+                            .fg(theme::SAFE_GREEN)
+                            .add_modifier(Modifier::BOLD),
+                    ))
+                } else {
+                    Line::from(Span::styled(format!("  {}", l.content), theme::dim_style()))
+                }
+            })
+            .collect();
 
-        let para = Paragraph::new(ratatui_lines)
-            .block(Block::default().title(self.title.as_str()).borders(Borders::ALL));
+        let para = Paragraph::new(ratatui_lines).block(
+            Block::default()
+                .title(self.title.as_str())
+                .borders(Borders::ALL),
+        );
         frame.render_widget(para, area);
     }
 }

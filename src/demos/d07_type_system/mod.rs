@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 const STEPS: usize = 6;
 
@@ -335,8 +335,11 @@ impl Demo for TypeSystemDemo {
         };
 
         frame.render_widget(
-            Paragraph::new(lines)
-                .block(Block::default().title("Type System Demo").borders(Borders::ALL)),
+            Paragraph::new(lines).block(
+                Block::default()
+                    .title("Type System Demo")
+                    .borders(Borders::ALL),
+            ),
             chunks[1],
         );
 

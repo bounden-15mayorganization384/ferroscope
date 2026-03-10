@@ -55,10 +55,7 @@ pub fn right_panel(percent: u16, r: Rect) -> (Rect, Rect) {
     let p = percent.min(100);
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(100 - p),
-            Constraint::Percentage(p),
-        ])
+        .constraints([Constraint::Percentage(100 - p), Constraint::Percentage(p)])
         .split(r);
     (chunks[0], chunks[1])
 }

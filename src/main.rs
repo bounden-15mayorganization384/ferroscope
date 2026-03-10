@@ -39,16 +39,24 @@ fn parse_args() -> CliArgs {
     let tour = args.iter().any(|a| a == "--tour");
     let screenshot = args.iter().any(|a| a == "--screenshot");
     let version = args.iter().any(|a| a == "--version");
-    let screenshot_dir = args.windows(2)
+    let screenshot_dir = args
+        .windows(2)
         .find(|w| w[0] == "--screenshot-dir")
         .map(|w| w[1].clone())
         .unwrap_or_else(|| "ferroscope-screenshots".into());
-    let fps = args.windows(2)
+    let fps = args
+        .windows(2)
         .find(|w| w[0] == "--fps")
         .and_then(|w| w[1].parse::<u64>().ok())
         .unwrap_or(DEFAULT_FPS)
         .clamp(5, 120);
-    CliArgs { tour, screenshot, screenshot_dir, fps, version }
+    CliArgs {
+        tour,
+        screenshot,
+        screenshot_dir,
+        fps,
+        version,
+    }
 }
 
 // ─── Terminal setup / teardown ────────────────────────────────────────────────
@@ -79,7 +87,9 @@ fn run_screenshot_mode(dir: &str, registry: &DemoRegistry) -> Result<()> {
     fs::create_dir_all(dir)?;
 
     for i in 0..registry.len() {
-        let name = registry.name(i).unwrap_or("unknown")
+        let name = registry
+            .name(i)
+            .unwrap_or("unknown")
             .to_lowercase()
             .replace(|c: char| !c.is_alphanumeric() && c != '-', "_")
             .trim_matches('_')
@@ -207,7 +217,13 @@ fn main() -> Result<()> {
         app.show_explanation = true;
     }
 
-    let result = run_app(&mut terminal, &mut app, &mut registry_mut, cli.tour, tick_rate);
+    let result = run_app(
+        &mut terminal,
+        &mut app,
+        &mut registry_mut,
+        cli.tour,
+        tick_rate,
+    );
     restore_terminal(&mut terminal)?;
 
     result
@@ -296,7 +312,9 @@ mod tests {
         assert!(result.is_ok(), "screenshot mode failed: {:?}", result);
         // Verify files were created
         for i in 0..registry.len() {
-            let name = registry.name(i).unwrap_or("unknown")
+            let name = registry
+                .name(i)
+                .unwrap_or("unknown")
                 .to_lowercase()
                 .replace(|c: char| !c.is_alphanumeric() && c != '-', "_")
                 .trim_matches('_')

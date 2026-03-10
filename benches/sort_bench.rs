@@ -3,13 +3,17 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 fn bench_sort(c: &mut Criterion) {
     let mut group = c.benchmark_group("sort");
     for size in [100u64, 1_000, 10_000] {
-        group.bench_with_input(BenchmarkId::new("sort_unstable", size), &size, |b, &size| {
-            b.iter(|| {
-                let mut v: Vec<u64> = (0..size).rev().collect();
-                v.sort_unstable();
-                black_box(v)
-            })
-        });
+        group.bench_with_input(
+            BenchmarkId::new("sort_unstable", size),
+            &size,
+            |b, &size| {
+                b.iter(|| {
+                    let mut v: Vec<u64> = (0..size).rev().collect();
+                    v.sort_unstable();
+                    black_box(v)
+                })
+            },
+        );
         group.bench_with_input(BenchmarkId::new("sort_stable", size), &size, |b, &size| {
             b.iter(|| {
                 let mut v: Vec<u64> = (0..size).rev().collect();

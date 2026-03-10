@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -6,8 +6,8 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Sparkline},
     Frame,
 };
+use std::time::Duration;
 use sysinfo::System;
-use crate::{demos::Demo, theme};
 
 const MAX_HISTORY: usize = 60;
 
@@ -182,11 +182,11 @@ impl Demo for SystemMetricsDemo {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),   // Title
-                Constraint::Min(6),      // CPU grid
-                Constraint::Length(3),   // Memory gauge
-                Constraint::Length(5),   // GC comparison row
-                Constraint::Length(2),   // Uptime
+                Constraint::Length(3), // Title
+                Constraint::Min(6),    // CPU grid
+                Constraint::Length(3), // Memory gauge
+                Constraint::Length(5), // GC comparison row
+                Constraint::Length(2), // Uptime
             ])
             .split(area);
 
@@ -255,20 +255,19 @@ impl Demo for SystemMetricsDemo {
         let total_mem = self.total_mem_bytes.max(1);
         let mem_ratio = (used_mem as f64 / total_mem as f64).clamp(0.0, 1.0);
 
-        let label = format!("RAM: {} / {}  ({}%)",
+        let label = format!(
+            "RAM: {} / {}  ({}%)",
             format_bytes(used_mem),
             format_bytes(self.total_mem_bytes),
-            (mem_ratio * 100.0) as u8);
+            (mem_ratio * 100.0) as u8
+        );
         crate::ui::widgets::GaugeBar::new(label, mem_ratio, crate::theme::HEAP_BLUE)
             .render(frame, chunks[2]);
 
         // ── GC comparison row ─────────────────────────────────────────────────
         let gc_row = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(50),
-                Constraint::Percentage(50),
-            ])
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(chunks[3]);
 
         // Left: Rust GC panel — flat sparkline of all zeros (no GC)
@@ -292,8 +291,7 @@ impl Demo for SystemMetricsDemo {
         let gc_data: Vec<u64> = self.simulated_gc_pauses.iter().map(|&v| v as u64).collect();
         let gc_title = format!(
             "JVM/Go (sim) — cur: {:.0} ms  pauses: {}",
-            current_pause,
-            self.gc_sim_total_pauses,
+            current_pause, self.gc_sim_total_pauses,
         );
         frame.render_widget(
             Sparkline::default()
@@ -320,10 +318,7 @@ impl Demo for SystemMetricsDemo {
                         .fg(theme::STACK_CYAN)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(
-                    format!("  (tick #{})", self.tick_count),
-                    theme::dim_style(),
-                ),
+                Span::styled(format!("  (tick #{})", self.tick_count), theme::dim_style()),
             ])),
             chunks[4],
         );
@@ -643,15 +638,27 @@ mod tests {
     fn test_simulated_gc_pause_ms_minor_gc() {
         // tick 31 triggers a minor GC (>0)
         let pause = simulated_gc_pause_ms(31);
-        assert!(pause > 0.0, "tick 31 should produce a minor GC pause, got {}", pause);
-        assert!(pause >= 8.0 && pause <= 20.0, "minor GC should be 8-20 ms, got {}", pause);
+        assert!(
+            pause > 0.0,
+            "tick 31 should produce a minor GC pause, got {}",
+            pause
+        );
+        assert!(
+            pause >= 8.0 && pause <= 20.0,
+            "minor GC should be 8-20 ms, got {}",
+            pause
+        );
     }
 
     #[test]
     fn test_simulated_gc_pause_ms_major_gc() {
         // tick 127 triggers a major GC (>=80ms)
         let pause = simulated_gc_pause_ms(127);
-        assert!(pause >= 80.0, "tick 127 should produce a major GC pause >= 80ms, got {}", pause);
+        assert!(
+            pause >= 80.0,
+            "tick 127 should produce a major GC pause >= 80ms, got {}",
+            pause
+        );
     }
 
     #[test]
@@ -660,7 +667,10 @@ mod tests {
         for _ in 0..5 {
             d.tick(Duration::from_millis(50));
         }
-        assert!(!d.simulated_gc_pauses.is_empty(), "simulated_gc_pauses should be non-empty after 5 ticks");
+        assert!(
+            !d.simulated_gc_pauses.is_empty(),
+            "simulated_gc_pauses should be non-empty after 5 ticks"
+        );
     }
 
     #[test]
@@ -684,8 +694,14 @@ mod tests {
         }
         d.reset();
         assert_eq!(d.gc_sim_tick, 0, "gc_sim_tick should be 0 after reset");
-        assert!(d.simulated_gc_pauses.is_empty(), "simulated_gc_pauses should be empty after reset");
-        assert_eq!(d.gc_sim_total_pauses, 0, "gc_sim_total_pauses should be 0 after reset");
+        assert!(
+            d.simulated_gc_pauses.is_empty(),
+            "simulated_gc_pauses should be empty after reset"
+        );
+        assert_eq!(
+            d.gc_sim_total_pauses, 0,
+            "gc_sim_total_pauses should be 0 after reset"
+        );
     }
 
     #[test]

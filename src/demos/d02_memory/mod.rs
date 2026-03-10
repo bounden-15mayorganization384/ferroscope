@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,19 +6,22 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 const STEPS: usize = 10;
 
 #[derive(Debug, Clone)]
 pub struct StackFrame {
     pub label: String,
-    pub vars: Vec<(String, u64)>,  // (name, size_bytes)
+    pub vars: Vec<(String, u64)>, // (name, size_bytes)
 }
 
 impl StackFrame {
     pub fn new(label: impl Into<String>) -> Self {
-        Self { label: label.into(), vars: Vec::new() }
+        Self {
+            label: label.into(),
+            vars: Vec::new(),
+        }
     }
     pub fn push_var(&mut self, name: impl Into<String>, size: u64) {
         self.vars.push((name.into(), size));
@@ -51,15 +54,21 @@ pub struct MemoryDemo {
 impl MemoryDemo {
     pub fn new() -> Self {
         Self {
-            paused: false, speed: 1, tick_count: 0,
-            step: 0, step_timer: 0.0,
-            alloc_count: 0, free_count: 0,
+            paused: false,
+            speed: 1,
+            tick_count: 0,
+            step: 0,
+            step_timer: 0.0,
+            alloc_count: 0,
+            free_count: 0,
             stack_frames: Vec::new(),
             heap_blocks: Vec::new(),
         }
     }
 
-    pub fn step_duration_secs(&self) -> f64 { 2.5 / self.speed as f64 }
+    pub fn step_duration_secs(&self) -> f64 {
+        2.5 / self.speed as f64
+    }
 
     fn apply_step(&mut self) {
         match self.step {
@@ -85,7 +94,11 @@ impl MemoryDemo {
                 if let Some(f) = self.stack_frames.last_mut() {
                     f.push_var("s: String (ptr/len/cap)", 24);
                 }
-                self.heap_blocks.push(HeapBlock { label: "s heap buf (empty)".into(), size_bytes: 0, alive: true });
+                self.heap_blocks.push(HeapBlock {
+                    label: "s heap buf (empty)".into(),
+                    size_bytes: 0,
+                    alive: true,
+                });
                 self.alloc_count += 1;
             }
             4 => {
@@ -104,7 +117,11 @@ impl MemoryDemo {
                 if let Some(f) = self.stack_frames.last_mut() {
                     f.push_var("inner: Box<i32> (ptr)", 8);
                 }
-                self.heap_blocks.push(HeapBlock { label: "Box<i32> (value=100)".into(), size_bytes: 4, alive: true });
+                self.heap_blocks.push(HeapBlock {
+                    label: "Box<i32> (value=100)".into(),
+                    size_bytes: 4,
+                    alive: true,
+                });
                 self.alloc_count += 1;
             }
             7 => {
@@ -140,15 +157,24 @@ impl MemoryDemo {
     }
 
     pub fn leaked_bytes(&self) -> u64 {
-        self.heap_blocks.iter().filter(|b| b.alive).map(|b| b.size_bytes).sum()
+        self.heap_blocks
+            .iter()
+            .filter(|b| b.alive)
+            .map(|b| b.size_bytes)
+            .sum()
     }
 }
 
 pub fn format_bytes(bytes: u64) -> String {
-    if bytes >= 1_073_741_824 { format!("{:.1} GB", bytes as f64 / 1_073_741_824.0) }
-    else if bytes >= 1_048_576 { format!("{:.1} MB", bytes as f64 / 1_048_576.0) }
-    else if bytes >= 1_024 { format!("{:.1} KB", bytes as f64 / 1_024.0) }
-    else { format!("{} B", bytes) }
+    if bytes >= 1_073_741_824 {
+        format!("{:.1} GB", bytes as f64 / 1_073_741_824.0)
+    } else if bytes >= 1_048_576 {
+        format!("{:.1} MB", bytes as f64 / 1_048_576.0)
+    } else if bytes >= 1_024 {
+        format!("{:.1} KB", bytes as f64 / 1_024.0)
+    } else {
+        format!("{} B", bytes)
+    }
 }
 
 pub fn step_title(step: usize) -> &'static str {
@@ -167,12 +193,16 @@ pub fn step_title(step: usize) -> &'static str {
 }
 
 impl Default for MemoryDemo {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Demo for MemoryDemo {
     fn tick(&mut self, dt: Duration) {
-        if self.paused { return; }
+        if self.paused {
+            return;
+        }
         self.tick_count = self.tick_count.wrapping_add(1);
         self.step_timer += dt.as_secs_f64();
         if self.step_timer >= self.step_duration_secs() {
@@ -183,14 +213,27 @@ impl Demo for MemoryDemo {
     fn render(&self, frame: &mut Frame, area: Rect) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Min(6), Constraint::Length(3)])
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Min(6),
+                Constraint::Length(3),
+            ])
             .split(area);
 
         // Title
         let title_text = step_title(self.step);
         frame.render_widget(
-            Paragraph::new(Span::styled(title_text, Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD)))
-                .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme::RUST_ORANGE))),
+            Paragraph::new(Span::styled(
+                title_text,
+                Style::default()
+                    .fg(theme::RUST_ORANGE)
+                    .add_modifier(Modifier::BOLD),
+            ))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::RUST_ORANGE)),
+            ),
             chunks[0],
         );
 
@@ -201,60 +244,106 @@ impl Demo for MemoryDemo {
             .split(chunks[1]);
 
         // Stack
-        let stack_items: Vec<ListItem> = self.stack_frames.iter().rev().flat_map(|f| {
-            let mut items = vec![
-                ListItem::new(Line::from(Span::styled(
+        let stack_items: Vec<ListItem> = self
+            .stack_frames
+            .iter()
+            .rev()
+            .flat_map(|f| {
+                let mut items = vec![ListItem::new(Line::from(Span::styled(
                     format!("┌─ {} ({} B)", f.label, f.total_size()),
-                    Style::default().fg(theme::STACK_CYAN).add_modifier(Modifier::BOLD),
-                ))),
-            ];
-            for (name, size) in &f.vars {
+                    Style::default()
+                        .fg(theme::STACK_CYAN)
+                        .add_modifier(Modifier::BOLD),
+                )))];
+                for (name, size) in &f.vars {
+                    items.push(ListItem::new(Line::from(Span::styled(
+                        format!("│  {} = {} B", name, size),
+                        Style::default().fg(theme::STACK_CYAN),
+                    ))));
+                }
                 items.push(ListItem::new(Line::from(Span::styled(
-                    format!("│  {} = {} B", name, size),
-                    Style::default().fg(theme::STACK_CYAN),
+                    "└──────────────",
+                    theme::dim_style(),
                 ))));
-            }
-            items.push(ListItem::new(Line::from(Span::styled("└──────────────", theme::dim_style()))));
-            items
-        }).collect();
-        let stack_list = List::new(stack_items)
-            .block(Block::default().title("■ STACK (LIFO, fast O(1))").borders(Borders::ALL)
-                .border_style(Style::default().fg(theme::STACK_CYAN)));
+                items
+            })
+            .collect();
+        let stack_list = List::new(stack_items).block(
+            Block::default()
+                .title("■ STACK (LIFO, fast O(1))")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(theme::STACK_CYAN)),
+        );
         frame.render_widget(stack_list, mid[0]);
 
         // Heap
-        let heap_items: Vec<ListItem> = self.heap_blocks.iter().map(|b| {
-            let (color, marker) = if b.alive {
-                (theme::HEAP_BLUE, "✓")
-            } else {
-                (theme::TEXT_DIM, "✗ freed")
-            };
-            ListItem::new(Line::from(vec![
-                Span::styled(format!("[{}] ", marker), Style::default().fg(color)),
-                Span::styled(format!("{} — {}", b.label, format_bytes(b.size_bytes)), Style::default().fg(color)),
-            ]))
-        }).collect();
-        let heap_list = List::new(heap_items)
-            .block(Block::default().title("▣ HEAP (dynamic, flexible)").borders(Borders::ALL)
-                .border_style(Style::default().fg(theme::HEAP_BLUE)));
+        let heap_items: Vec<ListItem> = self
+            .heap_blocks
+            .iter()
+            .map(|b| {
+                let (color, marker) = if b.alive {
+                    (theme::HEAP_BLUE, "✓")
+                } else {
+                    (theme::TEXT_DIM, "✗ freed")
+                };
+                ListItem::new(Line::from(vec![
+                    Span::styled(format!("[{}] ", marker), Style::default().fg(color)),
+                    Span::styled(
+                        format!("{} — {}", b.label, format_bytes(b.size_bytes)),
+                        Style::default().fg(color),
+                    ),
+                ]))
+            })
+            .collect();
+        let heap_list = List::new(heap_items).block(
+            Block::default()
+                .title("▣ HEAP (dynamic, flexible)")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(theme::HEAP_BLUE)),
+        );
         frame.render_widget(heap_list, mid[1]);
 
         // Stats bar
         let leaks = self.leaked_bytes();
-        let leak_color = if leaks == 0 { theme::SAFE_GREEN } else { theme::CRAB_RED };
+        let leak_color = if leaks == 0 {
+            theme::SAFE_GREEN
+        } else {
+            theme::CRAB_RED
+        };
         let stats = Line::from(vec![
-            Span::styled(format!(" allocs: {}  ", self.alloc_count), Style::default().fg(theme::HEAP_BLUE)),
-            Span::styled(format!("frees: {}  ", self.free_count), Style::default().fg(theme::STACK_CYAN)),
             Span::styled(
-                format!("leaks: {} bytes — {}", leaks, if leaks == 0 { "✓ ZERO LEAKS" } else { "⚠ LEAKED" }),
+                format!(" allocs: {}  ", self.alloc_count),
+                Style::default().fg(theme::HEAP_BLUE),
+            ),
+            Span::styled(
+                format!("frees: {}  ", self.free_count),
+                Style::default().fg(theme::STACK_CYAN),
+            ),
+            Span::styled(
+                format!(
+                    "leaks: {} bytes — {}",
+                    leaks,
+                    if leaks == 0 {
+                        "✓ ZERO LEAKS"
+                    } else {
+                        "⚠ LEAKED"
+                    }
+                ),
                 Style::default().fg(leak_color).add_modifier(Modifier::BOLD),
             ),
         ]);
-        frame.render_widget(Paragraph::new(stats).block(Block::default().borders(Borders::ALL)), chunks[2]);
+        frame.render_widget(
+            Paragraph::new(stats).block(Block::default().borders(Borders::ALL)),
+            chunks[2],
+        );
     }
 
-    fn name(&self) -> &'static str { "Memory Management" }
-    fn description(&self) -> &'static str { "Stack vs heap — deterministic allocation without a garbage collector." }
+    fn name(&self) -> &'static str {
+        "Memory Management"
+    }
+    fn description(&self) -> &'static str {
+        "Stack vs heap — deterministic allocation without a garbage collector."
+    }
     fn explanation(&self) -> &'static str {
         "Rust uses RAII (Resource Acquisition Is Initialization): resources are freed when \
         the owner goes out of scope. The Drop trait fires automatically — no GC, no finalizer, \
@@ -262,15 +351,27 @@ impl Demo for MemoryDemo {
         via Box<T>, Vec<T>, String. Every allocation is paired with a guaranteed deallocation."
     }
     fn reset(&mut self) {
-        self.step = 0; self.step_timer = 0.0; self.tick_count = 0;
-        self.alloc_count = 0; self.free_count = 0;
-        self.stack_frames.clear(); self.heap_blocks.clear();
+        self.step = 0;
+        self.step_timer = 0.0;
+        self.tick_count = 0;
+        self.alloc_count = 0;
+        self.free_count = 0;
+        self.stack_frames.clear();
+        self.heap_blocks.clear();
         self.paused = false;
     }
-    fn toggle_pause(&mut self) { self.paused = !self.paused; }
-    fn is_paused(&self) -> bool { self.paused }
-    fn set_speed(&mut self, speed: u8) { self.speed = speed.clamp(1, 10); }
-    fn speed(&self) -> u8 { self.speed }
+    fn toggle_pause(&mut self) {
+        self.paused = !self.paused;
+    }
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+    fn set_speed(&mut self, speed: u8) {
+        self.speed = speed.clamp(1, 10);
+    }
+    fn speed(&self) -> u8 {
+        self.speed
+    }
 }
 
 #[cfg(test)]
@@ -287,27 +388,35 @@ mod tests {
     }
 
     #[test]
-    fn test_is_paused_initially_false() { assert!(!MemoryDemo::new().is_paused()); }
+    fn test_is_paused_initially_false() {
+        assert!(!MemoryDemo::new().is_paused());
+    }
 
     #[test]
     fn test_toggle_pause() {
         let mut d = MemoryDemo::new();
-        d.toggle_pause(); assert!(d.is_paused());
-        d.toggle_pause(); assert!(!d.is_paused());
+        d.toggle_pause();
+        assert!(d.is_paused());
+        d.toggle_pause();
+        assert!(!d.is_paused());
     }
 
     #[test]
     fn test_set_speed_and_clamp() {
         let mut d = MemoryDemo::new();
-        d.set_speed(5); assert_eq!(d.speed(), 5);
-        d.set_speed(0); assert_eq!(d.speed(), 1);
-        d.set_speed(100); assert_eq!(d.speed(), 10);
+        d.set_speed(5);
+        assert_eq!(d.speed(), 5);
+        d.set_speed(0);
+        assert_eq!(d.speed(), 1);
+        d.set_speed(100);
+        assert_eq!(d.speed(), 10);
     }
 
     #[test]
     fn test_reset() {
         let mut d = MemoryDemo::new();
-        d.step = 5; d.alloc_count = 3;
+        d.step = 5;
+        d.alloc_count = 3;
         d.reset();
         assert_eq!(d.step, 0);
         assert_eq!(d.alloc_count, 0);

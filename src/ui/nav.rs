@@ -10,7 +10,7 @@ use crate::{app::App, demos::DemoRegistry, theme};
 
 /// Keyboard shortcut characters for each demo slot (up to 16 demos).
 const KEYS: &[&str] = &[
-    "1","2","3","4","5","6","7","8","9","0","a","b","c","d","f",
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "a", "b", "c", "d", "f",
 ];
 
 /// Difficulty level of each demo by index.
@@ -24,17 +24,17 @@ pub enum Difficulty {
 impl Difficulty {
     pub fn badge(&self) -> &'static str {
         match self {
-            Difficulty::Beginner     => "B",
+            Difficulty::Beginner => "B",
             Difficulty::Intermediate => "I",
-            Difficulty::Advanced     => "A",
+            Difficulty::Advanced => "A",
         }
     }
 
     pub fn color(&self) -> Color {
         match self {
-            Difficulty::Beginner     => theme::SAFE_GREEN,
+            Difficulty::Beginner => theme::SAFE_GREEN,
             Difficulty::Intermediate => theme::BORROW_YELLOW,
-            Difficulty::Advanced     => theme::CRAB_RED,
+            Difficulty::Advanced => theme::CRAB_RED,
         }
     }
 }
@@ -42,22 +42,22 @@ impl Difficulty {
 /// Returns the difficulty level for a given demo index (0-based).
 pub fn demo_difficulty(idx: usize) -> Difficulty {
     match idx {
-        0  => Difficulty::Beginner,      // Ownership & Borrowing
-        1  => Difficulty::Beginner,      // Memory Management
-        2  => Difficulty::Intermediate,  // Zero-Cost Abstractions
-        3  => Difficulty::Intermediate,  // Fearless Concurrency
-        4  => Difficulty::Intermediate,  // Async / Await
-        5  => Difficulty::Beginner,      // Performance Benchmarks
-        6  => Difficulty::Intermediate,  // Type System
-        7  => Difficulty::Beginner,      // Error Handling
-        8  => Difficulty::Intermediate,  // Lifetimes
-        9  => Difficulty::Advanced,      // Unsafe Rust
-        10 => Difficulty::Advanced,      // WebAssembly
-        11 => Difficulty::Beginner,      // System Metrics
-        12 => Difficulty::Intermediate,  // Compile-Time Guarantees
-        13 => Difficulty::Beginner,      // Cargo Ecosystem
-        14 => Difficulty::Advanced,      // Embedded / no_std
-        _  => Difficulty::Intermediate,
+        0 => Difficulty::Beginner,      // Ownership & Borrowing
+        1 => Difficulty::Beginner,      // Memory Management
+        2 => Difficulty::Intermediate,  // Zero-Cost Abstractions
+        3 => Difficulty::Intermediate,  // Fearless Concurrency
+        4 => Difficulty::Intermediate,  // Async / Await
+        5 => Difficulty::Beginner,      // Performance Benchmarks
+        6 => Difficulty::Intermediate,  // Type System
+        7 => Difficulty::Beginner,      // Error Handling
+        8 => Difficulty::Intermediate,  // Lifetimes
+        9 => Difficulty::Advanced,      // Unsafe Rust
+        10 => Difficulty::Advanced,     // WebAssembly
+        11 => Difficulty::Beginner,     // System Metrics
+        12 => Difficulty::Intermediate, // Compile-Time Guarantees
+        13 => Difficulty::Beginner,     // Cargo Ecosystem
+        14 => Difficulty::Advanced,     // Embedded / no_std
+        _ => Difficulty::Intermediate,
     }
 }
 
@@ -75,17 +75,13 @@ pub fn render_nav(frame: &mut Frame, area: Rect, app: &App, registry: &DemoRegis
             };
             Line::from(vec![
                 Span::styled(visit_sym, visit_style),
-                Span::styled(
-                    format!("[{}] ", key),
-                    theme::dim_style(),
-                ),
-                Span::styled(
-                    name,
-                    Style::default().fg(theme::TEXT_PRIMARY),
-                ),
+                Span::styled(format!("[{}] ", key), theme::dim_style()),
+                Span::styled(name, Style::default().fg(theme::TEXT_PRIMARY)),
                 Span::styled(
                     format!(" [{}]", diff.badge()),
-                    Style::default().fg(diff.color()).add_modifier(Modifier::DIM),
+                    Style::default()
+                        .fg(diff.color())
+                        .add_modifier(Modifier::DIM),
                 ),
             ])
         })
@@ -93,7 +89,11 @@ pub fn render_nav(frame: &mut Frame, area: Rect, app: &App, registry: &DemoRegis
 
     let tabs = Tabs::new(titles)
         .select(app.current_demo)
-        .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme::TEXT_DIM)))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(theme::TEXT_DIM)),
+        )
         .style(theme::dim_style())
         .highlight_style(
             Style::default()
@@ -116,7 +116,9 @@ mod tests {
         let registry = DemoRegistry::new();
         let backend = TestBackend::new(200, 5);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| render_nav(f, f.area(), &app, &registry)).unwrap();
+        terminal
+            .draw(|f| render_nav(f, f.area(), &app, &registry))
+            .unwrap();
     }
 
     #[test]
@@ -126,7 +128,9 @@ mod tests {
         let registry = DemoRegistry::new();
         let backend = TestBackend::new(200, 5);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| render_nav(f, f.area(), &app, &registry)).unwrap();
+        terminal
+            .draw(|f| render_nav(f, f.area(), &app, &registry))
+            .unwrap();
     }
 
     #[test]
@@ -196,20 +200,28 @@ mod tests {
     fn test_render_with_some_visited() {
         let mut app = App::new(15);
         // Visit a few demos
-        for i in [0, 3, 7, 9, 14] { app.visit(i); }
+        for i in [0, 3, 7, 9, 14] {
+            app.visit(i);
+        }
         let registry = DemoRegistry::new();
         let backend = TestBackend::new(200, 5);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| render_nav(f, f.area(), &app, &registry)).unwrap();
+        terminal
+            .draw(|f| render_nav(f, f.area(), &app, &registry))
+            .unwrap();
     }
 
     #[test]
     fn test_render_all_visited() {
         let mut app = App::new(15);
-        for i in 0..15 { app.visit(i); }
+        for i in 0..15 {
+            app.visit(i);
+        }
         let registry = DemoRegistry::new();
         let backend = TestBackend::new(200, 5);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| render_nav(f, f.area(), &app, &registry)).unwrap();
+        terminal
+            .draw(|f| render_nav(f, f.area(), &app, &registry))
+            .unwrap();
     }
 }

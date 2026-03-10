@@ -14,7 +14,10 @@ pub struct FlameGraph {
 
 impl FlameGraph {
     pub fn new() -> Self {
-        Self { frames: Vec::new(), color: Color::Yellow }
+        Self {
+            frames: Vec::new(),
+            color: Color::Yellow,
+        }
     }
 
     pub fn push_frame(&mut self, label: impl Into<String>, proportion: f64) {
@@ -35,9 +38,8 @@ impl FlameGraph {
             return;
         }
 
-        let constraints: Vec<Constraint> = self.frames.iter()
-            .map(|_| Constraint::Length(1))
-            .collect();
+        let constraints: Vec<Constraint> =
+            self.frames.iter().map(|_| Constraint::Length(1)).collect();
 
         let rows = Layout::default()
             .direction(Direction::Vertical)

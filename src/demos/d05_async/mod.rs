@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 /// State of a simulated async task in the executor model.
 #[derive(Debug, Clone, PartialEq)]
@@ -22,8 +22,8 @@ impl AsyncTaskState {
         match self {
             AsyncTaskState::Pending => "PENDING",
             AsyncTaskState::Polling => "POLLING",
-            AsyncTaskState::Ready   => "READY  ",
-            AsyncTaskState::Done    => "DONE   ",
+            AsyncTaskState::Ready => "READY  ",
+            AsyncTaskState::Done => "DONE   ",
         }
     }
 
@@ -31,8 +31,8 @@ impl AsyncTaskState {
         match self {
             AsyncTaskState::Pending => theme::TEXT_DIM,
             AsyncTaskState::Polling => theme::BORROW_YELLOW,
-            AsyncTaskState::Ready   => theme::SAFE_GREEN,
-            AsyncTaskState::Done    => theme::ASYNC_PURPLE,
+            AsyncTaskState::Ready => theme::SAFE_GREEN,
+            AsyncTaskState::Done => theme::ASYNC_PURPLE,
         }
     }
 }
@@ -98,12 +98,12 @@ impl AsyncDemo {
 
     fn init_tasks(&mut self) {
         self.tasks = vec![
-            AsyncTask::new(0, "HTTP request",  5),
-            AsyncTask::new(1, "File I/O",      3),
-            AsyncTask::new(2, "Timer",         2),
-            AsyncTask::new(3, "DB query",      4),
-            AsyncTask::new(4, "DNS lookup",    2),
-            AsyncTask::new(5, "TCP accept",    6),
+            AsyncTask::new(0, "HTTP request", 5),
+            AsyncTask::new(1, "File I/O", 3),
+            AsyncTask::new(2, "Timer", 2),
+            AsyncTask::new(3, "DB query", 4),
+            AsyncTask::new(4, "DNS lookup", 2),
+            AsyncTask::new(5, "TCP accept", 6),
         ];
         self.completed_count = 0;
         self.total_polls = 0;
@@ -129,19 +129,31 @@ impl AsyncDemo {
     }
 
     pub fn pending_count(&self) -> usize {
-        self.tasks.iter().filter(|t| t.state == AsyncTaskState::Pending).count()
+        self.tasks
+            .iter()
+            .filter(|t| t.state == AsyncTaskState::Pending)
+            .count()
     }
 
     pub fn polling_count(&self) -> usize {
-        self.tasks.iter().filter(|t| t.state == AsyncTaskState::Polling).count()
+        self.tasks
+            .iter()
+            .filter(|t| t.state == AsyncTaskState::Polling)
+            .count()
     }
 
     pub fn ready_count(&self) -> usize {
-        self.tasks.iter().filter(|t| t.state == AsyncTaskState::Ready).count()
+        self.tasks
+            .iter()
+            .filter(|t| t.state == AsyncTaskState::Ready)
+            .count()
     }
 
     pub fn done_count(&self) -> usize {
-        self.tasks.iter().filter(|t| t.state == AsyncTaskState::Done).count()
+        self.tasks
+            .iter()
+            .filter(|t| t.state == AsyncTaskState::Done)
+            .count()
     }
 }
 
@@ -186,12 +198,16 @@ pub fn simulate_poll_cycle(tasks: &mut Vec<AsyncTask>) -> (u64, u64) {
 }
 
 impl Default for AsyncDemo {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Demo for AsyncDemo {
     fn tick(&mut self, dt: Duration) {
-        if self.paused { return; }
+        if self.paused {
+            return;
+        }
         self.tick_count = self.tick_count.wrapping_add(1);
         self.tick_acc += dt.as_secs_f64();
         if self.tick_acc >= self.cycle_period_secs() {
@@ -204,9 +220,9 @@ impl Demo for AsyncDemo {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),  // title
-                Constraint::Min(10),    // task list + explanation
-                Constraint::Length(4),  // stats bar
+                Constraint::Length(3), // title
+                Constraint::Min(10),   // task list + explanation
+                Constraint::Length(4), // stats bar
             ])
             .split(area);
 
@@ -214,10 +230,15 @@ impl Demo for AsyncDemo {
         frame.render_widget(
             Paragraph::new(Span::styled(
                 "Async/Await — Cooperative multitasking without threads",
-                Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme::RUST_ORANGE)
+                    .add_modifier(Modifier::BOLD),
             ))
-            .block(Block::default().borders(Borders::ALL)
-                .border_style(Style::default().fg(theme::RUST_ORANGE))),
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::RUST_ORANGE)),
+            ),
             chunks[0],
         );
 
@@ -228,38 +249,53 @@ impl Demo for AsyncDemo {
             .split(chunks[1]);
 
         // Task list with progress gauges
-        let task_items: Vec<ListItem> = self.tasks.iter().map(|t| {
-            let color = t.state.color();
-            let pct = (t.progress() * 100.0) as u64;
-            let bar_len = (t.progress() * 16.0) as usize;
-            let bar_empty = 16usize.saturating_sub(bar_len);
-            let bar = format!("[{}{}]", "█".repeat(bar_len), "░".repeat(bar_empty));
-            ListItem::new(Line::from(vec![
-                Span::styled(
-                    format!("  [{:>2}] {:14} ", t.id, t.label),
-                    Style::default().fg(color),
-                ),
-                Span::styled(
-                    t.state.label(),
-                    Style::default().fg(color).add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(
-                    format!(" {} {:3}%  polls: {}/{}", bar, pct, t.polls_done, t.polls_needed),
-                    Style::default().fg(color),
-                ),
-            ]))
-        }).collect();
+        let task_items: Vec<ListItem> = self
+            .tasks
+            .iter()
+            .map(|t| {
+                let color = t.state.color();
+                let pct = (t.progress() * 100.0) as u64;
+                let bar_len = (t.progress() * 16.0) as usize;
+                let bar_empty = 16usize.saturating_sub(bar_len);
+                let bar = format!("[{}{}]", "█".repeat(bar_len), "░".repeat(bar_empty));
+                ListItem::new(Line::from(vec![
+                    Span::styled(
+                        format!("  [{:>2}] {:14} ", t.id, t.label),
+                        Style::default().fg(color),
+                    ),
+                    Span::styled(
+                        t.state.label(),
+                        Style::default().fg(color).add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        format!(
+                            " {} {:3}%  polls: {}/{}",
+                            bar, pct, t.polls_done, t.polls_needed
+                        ),
+                        Style::default().fg(color),
+                    ),
+                ]))
+            })
+            .collect();
 
         frame.render_widget(
-            List::new(task_items)
-                .block(Block::default().title("Simulated Executor Tasks").borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::ASYNC_PURPLE))),
+            List::new(task_items).block(
+                Block::default()
+                    .title("Simulated Executor Tasks")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::ASYNC_PURPLE)),
+            ),
             mid[0],
         );
 
         // Executor state breakdown
         let expl_lines = vec![
-            Line::from(Span::styled("State Machine Model:", Style::default().fg(theme::BORROW_YELLOW).add_modifier(Modifier::BOLD))),
+            Line::from(Span::styled(
+                "State Machine Model:",
+                Style::default()
+                    .fg(theme::BORROW_YELLOW)
+                    .add_modifier(Modifier::BOLD),
+            )),
             Line::from(""),
             Line::from(Span::styled(
                 format!("  Pending : {:2}", self.pending_count()),
@@ -293,8 +329,12 @@ impl Demo for AsyncDemo {
         ];
         frame.render_widget(
             Paragraph::new(expl_lines)
-                .block(Block::default().title("Executor State").borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::HEAP_BLUE)))
+                .block(
+                    Block::default()
+                        .title("Executor State")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(theme::HEAP_BLUE)),
+                )
                 .wrap(ratatui::widgets::Wrap { trim: true }),
             mid[1],
         );
@@ -311,12 +351,11 @@ impl Demo for AsyncDemo {
             ),
             Span::styled(
                 format!("tasks completed: {:4}  ", self.completed_count),
-                Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme::SAFE_GREEN)
+                    .add_modifier(Modifier::BOLD),
             ),
-            Span::styled(
-                "No threads blocked. No stack per task.",
-                theme::dim_style(),
-            ),
+            Span::styled("No threads blocked. No stack per task.", theme::dim_style()),
         ]);
         frame.render_widget(
             Paragraph::new(stats).block(Block::default().borders(Borders::ALL)),
@@ -324,8 +363,12 @@ impl Demo for AsyncDemo {
         );
     }
 
-    fn name(&self) -> &'static str { "Async/Await" }
-    fn description(&self) -> &'static str { "Cooperative multitasking — futures and the state machine model." }
+    fn name(&self) -> &'static str {
+        "Async/Await"
+    }
+    fn description(&self) -> &'static str {
+        "Cooperative multitasking — futures and the state machine model."
+    }
     fn explanation(&self) -> &'static str {
         "Rust's async/await desugars to state machines, not OS threads. \
         Each async fn becomes a Future: a struct implementing poll(). \
@@ -341,10 +384,18 @@ impl Demo for AsyncDemo {
         self.paused = false;
         self.init_tasks();
     }
-    fn toggle_pause(&mut self) { self.paused = !self.paused; }
-    fn is_paused(&self) -> bool { self.paused }
-    fn set_speed(&mut self, speed: u8) { self.speed = speed.clamp(1, 10); }
-    fn speed(&self) -> u8 { self.speed }
+    fn toggle_pause(&mut self) {
+        self.paused = !self.paused;
+    }
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+    fn set_speed(&mut self, speed: u8) {
+        self.speed = speed.clamp(1, 10);
+    }
+    fn speed(&self) -> u8 {
+        self.speed
+    }
 }
 
 #[cfg(test)]
@@ -499,10 +550,7 @@ mod tests {
 
     #[test]
     fn test_simulate_poll_cycle_multiple_tasks() {
-        let mut tasks = vec![
-            AsyncTask::new(0, "a", 1),
-            AsyncTask::new(1, "b", 2),
-        ];
+        let mut tasks = vec![AsyncTask::new(0, "a", 1), AsyncTask::new(1, "b", 2)];
         // Run enough cycles to complete both
         let mut total_completed = 0u64;
         for _ in 0..10 {
@@ -579,9 +627,11 @@ mod tests {
         d.set_speed(10);
         d.tick(Duration::from_secs_f64(0.07));
         // Tasks should have been re-initialized (all Pending)
-        assert!(d.tasks.iter().all(|t| t.state != AsyncTaskState::Done)
-            || d.tasks.iter().all(|t| t.state == AsyncTaskState::Pending)
-            || d.tasks.len() == 6);
+        assert!(
+            d.tasks.iter().all(|t| t.state != AsyncTaskState::Done)
+                || d.tasks.iter().all(|t| t.state == AsyncTaskState::Pending)
+                || d.tasks.len() == 6
+        );
     }
 
     #[test]

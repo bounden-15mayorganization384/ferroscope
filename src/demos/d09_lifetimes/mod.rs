@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 const STEPS: usize = 5;
 
@@ -86,7 +86,10 @@ pub fn scope_bracket_lines(depth: usize) -> Vec<String> {
 pub fn lifetime_annotation_example() -> Vec<(&'static str, bool)> {
     vec![
         ("// Without lifetime annotations:", false),
-        ("// fn longest(x: &str, y: &str) -> &str  ← compile error", false),
+        (
+            "// fn longest(x: &str, y: &str) -> &str  ← compile error",
+            false,
+        ),
         ("", false),
         ("// With lifetime annotations:", false),
         ("fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {", true),
@@ -213,10 +216,7 @@ impl Demo for LifetimesDemo {
                     Style::default().fg(theme::STACK_CYAN),
                 )),
                 Line::from(""),
-                Line::from(Span::styled(
-                    "  r's lifetime: ──────┐",
-                    theme::dim_style(),
-                )),
+                Line::from(Span::styled("  r's lifetime: ──────┐", theme::dim_style())),
                 Line::from(Span::styled(
                     "  s's lifetime: ─────────┐",
                     Style::default().fg(theme::SAFE_GREEN),
@@ -329,8 +329,11 @@ impl Demo for LifetimesDemo {
         };
 
         frame.render_widget(
-            Paragraph::new(content_lines)
-                .block(Block::default().title("Lifetimes Demo").borders(Borders::ALL)),
+            Paragraph::new(content_lines).block(
+                Block::default()
+                    .title("Lifetimes Demo")
+                    .borders(Borders::ALL),
+            ),
             chunks[1],
         );
 

@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use crate::{demos::Demo, theme, ui::widgets::SparklineExt};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Bar, BarChart, BarGroup, Block, Borders, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme, ui::widgets::SparklineExt};
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BenchPhase {
@@ -34,11 +34,17 @@ pub struct ZeroCostDemo {
 impl ZeroCostDemo {
     pub fn new() -> Self {
         let mut d = Self {
-            paused: false, speed: 1, tick_count: 0,
+            paused: false,
+            speed: 1,
+            tick_count: 0,
             phase: BenchPhase::Running,
             phase_timer: 0.0,
             bench_n: 1_000,
-            iter_ns: 0, loop_ns: 0, iter_result: 0, loop_result: 0, run_count: 0,
+            iter_ns: 0,
+            loop_ns: 0,
+            iter_result: 0,
+            loop_result: 0,
+            run_count: 0,
             ns_history_iter: Vec::new(),
             ns_history_loop: Vec::new(),
         };
@@ -56,8 +62,12 @@ impl ZeroCostDemo {
         self.run_count += 1;
         self.ns_history_iter.push(ins);
         self.ns_history_loop.push(lns);
-        if self.ns_history_iter.len() > 30 { self.ns_history_iter.remove(0); }
-        if self.ns_history_loop.len() > 30 { self.ns_history_loop.remove(0); }
+        if self.ns_history_iter.len() > 30 {
+            self.ns_history_iter.remove(0);
+        }
+        if self.ns_history_loop.len() > 30 {
+            self.ns_history_loop.remove(0);
+        }
     }
 
     fn cycle_n(&mut self) {
@@ -73,7 +83,9 @@ impl ZeroCostDemo {
     }
 
     pub fn ratio(&self) -> f64 {
-        if self.loop_ns == 0 { return 1.0; }
+        if self.loop_ns == 0 {
+            return 1.0;
+        }
         self.iter_ns as f64 / self.loop_ns as f64
     }
 }
@@ -100,12 +112,16 @@ pub fn run_loop_bench(n: u64) -> (u64, u64) {
 }
 
 impl Default for ZeroCostDemo {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Demo for ZeroCostDemo {
     fn tick(&mut self, dt: Duration) {
-        if self.paused { return; }
+        if self.paused {
+            return;
+        }
         self.tick_count = self.tick_count.wrapping_add(1);
         self.phase_timer += dt.as_secs_f64();
 
@@ -128,25 +144,43 @@ impl Demo for ZeroCostDemo {
     fn render(&self, frame: &mut Frame, area: Rect) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Min(8), Constraint::Length(5), Constraint::Length(5)])
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Min(8),
+                Constraint::Length(5),
+                Constraint::Length(5),
+            ])
             .split(area);
 
         // Title — shows live phase status
         let (title_text, title_color) = match self.phase {
             BenchPhase::Running => (
-                format!("● Running benchmark…  n = {}  |  Zero-Cost Abstractions", self.bench_n),
+                format!(
+                    "● Running benchmark…  n = {}  |  Zero-Cost Abstractions",
+                    self.bench_n
+                ),
                 theme::BORROW_YELLOW,
             ),
             BenchPhase::Displaying => (
-                format!("✓ Complete — next: n = {}  |  Zero-Cost Abstractions", self.bench_n),
+                format!(
+                    "✓ Complete — next: n = {}  |  Zero-Cost Abstractions",
+                    self.bench_n
+                ),
                 theme::SAFE_GREEN,
             ),
         };
         frame.render_widget(
             Paragraph::new(Span::styled(
                 title_text,
-                Style::default().fg(title_color).add_modifier(Modifier::BOLD),
-            )).block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(title_color))),
+                Style::default()
+                    .fg(title_color)
+                    .add_modifier(Modifier::BOLD),
+            ))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(title_color)),
+            ),
             chunks[0],
         );
 
@@ -157,40 +191,100 @@ impl Demo for ZeroCostDemo {
 
         // Left: iterator result
         let iter_lines = vec![
-            Line::from(Span::styled("Iterator approach:", Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD))),
-            Line::from(Span::styled("(0..n).filter(|x| x%2==0)", theme::dim_style())),
+            Line::from(Span::styled(
+                "Iterator approach:",
+                Style::default()
+                    .fg(theme::SAFE_GREEN)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            Line::from(Span::styled(
+                "(0..n).filter(|x| x%2==0)",
+                theme::dim_style(),
+            )),
             Line::from(Span::styled("    .map(|x| x*x).sum()", theme::dim_style())),
             Line::from(""),
-            Line::from(Span::styled(format!("N = {}", self.bench_n), theme::label_style())),
-            Line::from(Span::styled(format!("Result: {}", self.iter_result), theme::label_style())),
-            Line::from(Span::styled(format!("Time: {} ns", self.iter_ns), Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD))),
+            Line::from(Span::styled(
+                format!("N = {}", self.bench_n),
+                theme::label_style(),
+            )),
+            Line::from(Span::styled(
+                format!("Result: {}", self.iter_result),
+                theme::label_style(),
+            )),
+            Line::from(Span::styled(
+                format!("Time: {} ns", self.iter_ns),
+                Style::default()
+                    .fg(theme::SAFE_GREEN)
+                    .add_modifier(Modifier::BOLD),
+            )),
         ];
         frame.render_widget(
-            Paragraph::new(iter_lines).block(Block::default().title("Iterator Chain").borders(Borders::ALL).border_style(Style::default().fg(theme::SAFE_GREEN))),
+            Paragraph::new(iter_lines).block(
+                Block::default()
+                    .title("Iterator Chain")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::SAFE_GREEN)),
+            ),
             mid[0],
         );
 
         // Right: loop result
         let loop_lines = vec![
-            Line::from(Span::styled("Manual loop:", Style::default().fg(theme::HEAP_BLUE).add_modifier(Modifier::BOLD))),
+            Line::from(Span::styled(
+                "Manual loop:",
+                Style::default()
+                    .fg(theme::HEAP_BLUE)
+                    .add_modifier(Modifier::BOLD),
+            )),
             Line::from(Span::styled("let mut sum = 0;", theme::dim_style())),
             Line::from(Span::styled("for x in 0..n {", theme::dim_style())),
-            Line::from(Span::styled("  if x%2==0 { sum+=x*x; }", theme::dim_style())),
+            Line::from(Span::styled(
+                "  if x%2==0 { sum+=x*x; }",
+                theme::dim_style(),
+            )),
             Line::from(""),
-            Line::from(Span::styled(format!("N = {}", self.bench_n), theme::label_style())),
-            Line::from(Span::styled(format!("Time: {} ns", self.loop_ns), Style::default().fg(theme::HEAP_BLUE).add_modifier(Modifier::BOLD))),
+            Line::from(Span::styled(
+                format!("N = {}", self.bench_n),
+                theme::label_style(),
+            )),
+            Line::from(Span::styled(
+                format!("Time: {} ns", self.loop_ns),
+                Style::default()
+                    .fg(theme::HEAP_BLUE)
+                    .add_modifier(Modifier::BOLD),
+            )),
         ];
         frame.render_widget(
-            Paragraph::new(loop_lines).block(Block::default().title("Manual Loop").borders(Borders::ALL).border_style(Style::default().fg(theme::HEAP_BLUE))),
+            Paragraph::new(loop_lines).block(
+                Block::default()
+                    .title("Manual Loop")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::HEAP_BLUE)),
+            ),
             mid[1],
         );
 
         // Stats — BarChart comparing iter_ns vs loop_ns
         let max_ns = self.iter_ns.max(self.loop_ns).max(1);
-        let match_str = if self.results_match() { "✓ match" } else { "✗ mismatch" };
-        let bar_title = format!(" {} | ratio: {:.3}x | run #{} ", match_str, self.ratio(), self.run_count);
-        let iter_bar = Bar::default().value(self.iter_ns).label(Line::from("iter")).style(Style::default().fg(theme::SAFE_GREEN));
-        let loop_bar = Bar::default().value(self.loop_ns).label(Line::from("loop")).style(Style::default().fg(theme::HEAP_BLUE));
+        let match_str = if self.results_match() {
+            "✓ match"
+        } else {
+            "✗ mismatch"
+        };
+        let bar_title = format!(
+            " {} | ratio: {:.3}x | run #{} ",
+            match_str,
+            self.ratio(),
+            self.run_count
+        );
+        let iter_bar = Bar::default()
+            .value(self.iter_ns)
+            .label(Line::from("iter"))
+            .style(Style::default().fg(theme::SAFE_GREEN));
+        let loop_bar = Bar::default()
+            .value(self.loop_ns)
+            .label(Line::from("loop"))
+            .style(Style::default().fg(theme::HEAP_BLUE));
         let bar_group = BarGroup::default().bars(&[iter_bar, loop_bar]);
         frame.render_widget(
             BarChart::default()
@@ -203,21 +297,36 @@ impl Demo for ZeroCostDemo {
         );
 
         // History sparklines — ns timing over last N runs
-        let hist_max = self.ns_history_iter.iter().chain(&self.ns_history_loop).copied().max().max(Some(1)).unwrap_or(1);
+        let hist_max = self
+            .ns_history_iter
+            .iter()
+            .chain(&self.ns_history_loop)
+            .copied()
+            .max()
+            .max(Some(1))
+            .unwrap_or(1);
         let spark_cols = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(chunks[3]);
         let mut iter_spark = SparklineExt::new("Iterator ns history", hist_max, theme::SAFE_GREEN);
-        for &v in &self.ns_history_iter { iter_spark.push(v); }
+        for &v in &self.ns_history_iter {
+            iter_spark.push(v);
+        }
         iter_spark.render(frame, spark_cols[0]);
         let mut loop_spark = SparklineExt::new("Loop ns history", hist_max, theme::HEAP_BLUE);
-        for &v in &self.ns_history_loop { loop_spark.push(v); }
+        for &v in &self.ns_history_loop {
+            loop_spark.push(v);
+        }
         loop_spark.render(frame, spark_cols[1]);
     }
 
-    fn name(&self) -> &'static str { "Zero-Cost Abstractions" }
-    fn description(&self) -> &'static str { "High-level iterators compile to the same code as manual loops." }
+    fn name(&self) -> &'static str {
+        "Zero-Cost Abstractions"
+    }
+    fn description(&self) -> &'static str {
+        "High-level iterators compile to the same code as manual loops."
+    }
     fn explanation(&self) -> &'static str {
         "Rust's iterators, closures, and generics have zero runtime overhead. \
         The compiler monomorphizes generic code and inlines iterator chains, \
@@ -226,15 +335,28 @@ impl Demo for ZeroCostDemo {
         you can't write it better by hand."
     }
     fn reset(&mut self) {
-        self.tick_count = 0; self.phase = BenchPhase::Running; self.phase_timer = 0.0;
-        self.run_count = 0; self.bench_n = 1_000;
-        self.ns_history_iter.clear(); self.ns_history_loop.clear();
-        self.run_bench(); self.paused = false;
+        self.tick_count = 0;
+        self.phase = BenchPhase::Running;
+        self.phase_timer = 0.0;
+        self.run_count = 0;
+        self.bench_n = 1_000;
+        self.ns_history_iter.clear();
+        self.ns_history_loop.clear();
+        self.run_bench();
+        self.paused = false;
     }
-    fn toggle_pause(&mut self) { self.paused = !self.paused; }
-    fn is_paused(&self) -> bool { self.paused }
-    fn set_speed(&mut self, speed: u8) { self.speed = speed.clamp(1, 10); }
-    fn speed(&self) -> u8 { self.speed }
+    fn toggle_pause(&mut self) {
+        self.paused = !self.paused;
+    }
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+    fn set_speed(&mut self, speed: u8) {
+        self.speed = speed.clamp(1, 10);
+    }
+    fn speed(&self) -> u8 {
+        self.speed
+    }
 }
 
 #[cfg(test)]
@@ -246,7 +368,7 @@ mod tests {
     fn test_run_iterator_bench_correctness() {
         let (result, ns) = run_iterator_bench(100);
         // sum of squares of even numbers 0..100: 0+4+16+...+9604
-        let expected: u64 = (0u64..100).filter(|x| x%2==0).map(|x| x*x).sum();
+        let expected: u64 = (0u64..100).filter(|x| x % 2 == 0).map(|x| x * x).sum();
         assert_eq!(result, expected);
         assert!(ns >= 1);
     }
@@ -254,7 +376,7 @@ mod tests {
     #[test]
     fn test_run_loop_bench_correctness() {
         let (result, ns) = run_loop_bench(100);
-        let expected: u64 = (0u64..100).filter(|x| x%2==0).map(|x| x*x).sum();
+        let expected: u64 = (0u64..100).filter(|x| x % 2 == 0).map(|x| x * x).sum();
         assert_eq!(result, expected);
         assert!(ns >= 1);
     }
@@ -283,21 +405,28 @@ mod tests {
     }
 
     #[test]
-    fn test_is_paused_initially_false() { assert!(!ZeroCostDemo::new().is_paused()); }
+    fn test_is_paused_initially_false() {
+        assert!(!ZeroCostDemo::new().is_paused());
+    }
 
     #[test]
     fn test_toggle_pause() {
         let mut d = ZeroCostDemo::new();
-        d.toggle_pause(); assert!(d.is_paused());
-        d.toggle_pause(); assert!(!d.is_paused());
+        d.toggle_pause();
+        assert!(d.is_paused());
+        d.toggle_pause();
+        assert!(!d.is_paused());
     }
 
     #[test]
     fn test_set_speed_clamp() {
         let mut d = ZeroCostDemo::new();
-        d.set_speed(0); assert_eq!(d.speed(), 1);
-        d.set_speed(100); assert_eq!(d.speed(), 10);
-        d.set_speed(5); assert_eq!(d.speed(), 5);
+        d.set_speed(0);
+        assert_eq!(d.speed(), 1);
+        d.set_speed(100);
+        assert_eq!(d.speed(), 10);
+        d.set_speed(5);
+        assert_eq!(d.speed(), 5);
     }
 
     #[test]

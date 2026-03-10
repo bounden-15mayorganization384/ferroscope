@@ -15,7 +15,12 @@ pub struct SparklineExt {
 
 impl SparklineExt {
     pub fn new(label: impl Into<String>, max: u64, color: Color) -> Self {
-        Self { data: Vec::new(), label: label.into(), max, color }
+        Self {
+            data: Vec::new(),
+            label: label.into(),
+            max,
+            color,
+        }
     }
 
     pub fn push(&mut self, val: u64) {
@@ -28,7 +33,11 @@ impl SparklineExt {
 
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         let sparkline = Sparkline::default()
-            .block(Block::default().title(self.label.as_str()).borders(Borders::ALL))
+            .block(
+                Block::default()
+                    .title(self.label.as_str())
+                    .borders(Borders::ALL),
+            )
             .data(&self.data)
             .max(if self.max == 0 { 1 } else { self.max })
             .style(Style::default().fg(self.color));

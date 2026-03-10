@@ -85,22 +85,28 @@ impl ThreadLaneChart {
         let inner = block.inner(area);
         frame.render_widget(block, area);
 
-        let lines: Vec<Line> = self.lanes.iter().map(|lane| {
-            let bar_w = (inner.width.saturating_sub(30) as f64 * lane.progress) as usize;
-            let bar: String = "█".repeat(bar_w);
-            Line::from(vec![
-                Span::styled(
-                    format!(" T{:02} ", lane.thread_id),
-                    Style::default().fg(theme::TEXT_DIM),
-                ),
-                Span::styled(
-                    format!("[{}] ", lane.state.label()),
-                    Style::default().fg(lane.state.color()).add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(format!("{:<20}", lane.label), theme::dim_style()),
-                Span::styled(bar, Style::default().fg(lane.state.color())),
-            ])
-        }).collect();
+        let lines: Vec<Line> = self
+            .lanes
+            .iter()
+            .map(|lane| {
+                let bar_w = (inner.width.saturating_sub(30) as f64 * lane.progress) as usize;
+                let bar: String = "█".repeat(bar_w);
+                Line::from(vec![
+                    Span::styled(
+                        format!(" T{:02} ", lane.thread_id),
+                        Style::default().fg(theme::TEXT_DIM),
+                    ),
+                    Span::styled(
+                        format!("[{}] ", lane.state.label()),
+                        Style::default()
+                            .fg(lane.state.color())
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(format!("{:<20}", lane.label), theme::dim_style()),
+                    Span::styled(bar, Style::default().fg(lane.state.color())),
+                ])
+            })
+            .collect();
 
         let para = Paragraph::new(lines);
         frame.render_widget(para, inner);

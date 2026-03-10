@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 const STEPS: usize = 6;
 
@@ -198,14 +198,8 @@ impl Demo for CargoDemo {
                             .fg(theme::BORROW_YELLOW)
                             .add_modifier(Modifier::BOLD),
                     )),
-                    Line::from(Span::styled(
-                        "name    = \"my_project\"",
-                        theme::dim_style(),
-                    )),
-                    Line::from(Span::styled(
-                        "version = \"0.1.0\"",
-                        theme::dim_style(),
-                    )),
+                    Line::from(Span::styled("name    = \"my_project\"", theme::dim_style())),
+                    Line::from(Span::styled("version = \"0.1.0\"", theme::dim_style())),
                     Line::from(""),
                     Line::from(Span::styled(
                         "[dependencies]",
@@ -215,35 +209,20 @@ impl Demo for CargoDemo {
                     )),
                     Line::from(vec![
                         Span::styled("serde  = ", theme::dim_style()),
-                        Span::styled(
-                            "\"1.0\"",
-                            Style::default().fg(theme::HEAP_BLUE),
-                        ),
+                        Span::styled("\"1.0\"", Style::default().fg(theme::HEAP_BLUE)),
                     ]),
                     Line::from(vec![
                         Span::styled("tokio  = { version = ", theme::dim_style()),
                         Span::styled("\"1\"", Style::default().fg(theme::HEAP_BLUE)),
                         Span::styled(", features = [", theme::dim_style()),
-                        Span::styled(
-                            "\"full\"",
-                            Style::default().fg(theme::BORROW_YELLOW),
-                        ),
+                        Span::styled("\"full\"", Style::default().fg(theme::BORROW_YELLOW)),
                         Span::styled("] }", theme::dim_style()),
                     ]),
                     Line::from(vec![
-                        Span::styled(
-                            "reqwest = { version = ",
-                            theme::dim_style(),
-                        ),
-                        Span::styled(
-                            "\"0.12\"",
-                            Style::default().fg(theme::HEAP_BLUE),
-                        ),
+                        Span::styled("reqwest = { version = ", theme::dim_style()),
+                        Span::styled("\"0.12\"", Style::default().fg(theme::HEAP_BLUE)),
                         Span::styled(", features = [", theme::dim_style()),
-                        Span::styled(
-                            "\"json\"",
-                            Style::default().fg(theme::BORROW_YELLOW),
-                        ),
+                        Span::styled("\"json\"", Style::default().fg(theme::BORROW_YELLOW)),
                         Span::styled("] }", theme::dim_style()),
                     ]),
                     Line::from(""),
@@ -304,14 +283,9 @@ impl Demo for CargoDemo {
                         ListItem::new(Line::from(vec![
                             Span::styled(
                                 status,
-                                Style::default()
-                                    .fg(color)
-                                    .add_modifier(Modifier::BOLD),
+                                Style::default().fg(color).add_modifier(Modifier::BOLD),
                             ),
-                            Span::styled(
-                                format!("  {}", name),
-                                theme::label_style(),
-                            ),
+                            Span::styled(format!("  {}", name), theme::label_style()),
                         ]))
                     })
                     .collect();
@@ -326,9 +300,16 @@ impl Demo for CargoDemo {
                 );
             }
             4 => {
-                let label = format!("Compilation Pipeline  [{:.0}%]  cargo build --release", self.build_progress * 100.0);
-                crate::ui::widgets::GaugeBar::new(label, self.build_progress, crate::theme::HEAP_BLUE)
-                    .render(frame, chunks[1]);
+                let label = format!(
+                    "Compilation Pipeline  [{:.0}%]  cargo build --release",
+                    self.build_progress * 100.0
+                );
+                crate::ui::widgets::GaugeBar::new(
+                    label,
+                    self.build_progress,
+                    crate::theme::HEAP_BLUE,
+                )
+                .render(frame, chunks[1]);
             }
             _ => {
                 // crates.io ecosystem
@@ -344,10 +325,7 @@ impl Demo for CargoDemo {
                                     .add_modifier(Modifier::BOLD),
                             ),
                             Span::styled("  — ", theme::dim_style()),
-                            Span::styled(
-                                *purpose,
-                                Style::default().fg(theme::BORROW_YELLOW),
-                            ),
+                            Span::styled(*purpose, Style::default().fg(theme::BORROW_YELLOW)),
                         ]))
                     })
                     .collect();

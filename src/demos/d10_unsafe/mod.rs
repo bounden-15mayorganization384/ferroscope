@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Gauge, List, ListItem, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 const STEPS: usize = 5;
 
@@ -184,10 +184,7 @@ impl Demo for UnsafeDemo {
                         "let data: [u32; 8] = [1, 2, 3, 4, 5, 6, 7, 8];",
                         theme::dim_style(),
                     )),
-                    Line::from(Span::styled(
-                        "let ptr = data.as_ptr();",
-                        theme::dim_style(),
-                    )),
+                    Line::from(Span::styled("let ptr = data.as_ptr();", theme::dim_style())),
                     Line::from(""),
                     Line::from(Span::styled(
                         "// SAFETY: i in 0..8, within bounds of `data`",
@@ -218,8 +215,11 @@ impl Demo for UnsafeDemo {
                     .collect();
                 lines.push(Line::from(spans));
                 frame.render_widget(
-                    Paragraph::new(lines)
-                        .block(Block::default().title("Raw Pointer Demo").borders(Borders::ALL)),
+                    Paragraph::new(lines).block(
+                        Block::default()
+                            .title("Raw Pointer Demo")
+                            .borders(Borders::ALL),
+                    ),
                     chunks[1],
                 );
             }
@@ -248,7 +248,10 @@ impl Demo for UnsafeDemo {
                             .add_modifier(Modifier::BOLD),
                     )),
                     Line::from(Span::styled("    } else {", theme::dim_style())),
-                    Line::from(Span::styled("        None", Style::default().fg(theme::CRAB_RED))),
+                    Line::from(Span::styled(
+                        "        None",
+                        Style::default().fg(theme::CRAB_RED),
+                    )),
                     Line::from(Span::styled("    }", theme::dim_style())),
                     Line::from(Span::styled("}", theme::dim_style())),
                     Line::from(""),
@@ -282,26 +285,24 @@ impl Demo for UnsafeDemo {
                     .split(chunks[1]);
 
                 frame.render_widget(
-                    Paragraph::new(vec![
-                        Line::from(Span::styled(
-                            format!(
-                                "  Total lines: {}   Unsafe lines: {}   = {:.2}%",
-                                total_lines, unsafe_lines, pct
-                            ),
-                            theme::dim_style(),
-                        )),
-                    ])
-                    .block(Block::default().title("Unsafe Surface Area").borders(Borders::ALL)),
+                    Paragraph::new(vec![Line::from(Span::styled(
+                        format!(
+                            "  Total lines: {}   Unsafe lines: {}   = {:.2}%",
+                            total_lines, unsafe_lines, pct
+                        ),
+                        theme::dim_style(),
+                    ))])
+                    .block(
+                        Block::default()
+                            .title("Unsafe Surface Area")
+                            .borders(Borders::ALL),
+                    ),
                     inner[0],
                 );
 
                 frame.render_widget(
                     Gauge::default()
-                        .block(
-                            Block::default()
-                                .title("unsafe %")
-                                .borders(Borders::ALL),
-                        )
+                        .block(Block::default().title("unsafe %").borders(Borders::ALL))
                         .gauge_style(Style::default().fg(theme::BORROW_YELLOW))
                         .ratio(pct_ratio),
                     inner[1],

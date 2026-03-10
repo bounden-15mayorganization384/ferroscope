@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 use thiserror::Error;
 
 const STEPS: usize = 6;
@@ -32,11 +32,20 @@ pub fn simulate_error_chain(depth: usize) -> Vec<String> {
     for i in 0..=depth {
         let indent = "  ".repeat(i);
         if i == depth {
-            lines.push(format!("{}fn level_{}() -> Result<(), AppError> {{", indent, i));
-            lines.push(format!("{}    Err(AppError::Io(\"disk full\".into()))", indent));
+            lines.push(format!(
+                "{}fn level_{}() -> Result<(), AppError> {{",
+                indent, i
+            ));
+            lines.push(format!(
+                "{}    Err(AppError::Io(\"disk full\".into()))",
+                indent
+            ));
             lines.push(format!("{}}}", indent));
         } else {
-            lines.push(format!("{}fn level_{}() -> Result<(), AppError> {{", indent, i));
+            lines.push(format!(
+                "{}fn level_{}() -> Result<(), AppError> {{",
+                indent, i
+            ));
             lines.push(format!(
                 "{}    level_{}()?  // ? propagates error up",
                 indent,
@@ -238,10 +247,7 @@ impl Demo for ErrorHandlingDemo {
                 )),
             ],
             3 => vec![
-                Line::from(Span::styled(
-                    "#[derive(Error, Debug)]",
-                    theme::dim_style(),
-                )),
+                Line::from(Span::styled("#[derive(Error, Debug)]", theme::dim_style())),
                 Line::from(Span::styled("enum AppError {", theme::dim_style())),
                 Line::from(Span::styled(
                     "    #[error(\"IO error: {0}\")]",
@@ -280,10 +286,7 @@ impl Demo for ErrorHandlingDemo {
             4 => {
                 let mid = Layout::default()
                     .direction(Direction::Horizontal)
-                    .constraints([
-                        Constraint::Percentage(50),
-                        Constraint::Percentage(50),
-                    ])
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(chunks[1]);
                 let exceptions = vec![
                     Line::from(Span::styled(
@@ -294,10 +297,7 @@ impl Demo for ErrorHandlingDemo {
                     )),
                     Line::from(Span::styled("try {", theme::dim_style())),
                     Line::from(Span::styled("  doSomething();", theme::dim_style())),
-                    Line::from(Span::styled(
-                        "} catch (Exception e) {",
-                        theme::dim_style(),
-                    )),
+                    Line::from(Span::styled("} catch (Exception e) {", theme::dim_style())),
                     Line::from(Span::styled(
                         "  // Easy to forget this!",
                         Style::default().fg(theme::CRAB_RED),
@@ -383,15 +383,10 @@ impl Demo for ErrorHandlingDemo {
                             None => (theme::CRAB_RED, "None  (no crash!)".to_string()),
                         };
                         Line::from(vec![
-                            Span::styled(
-                                format!("  safe_parse({input}) → "),
-                                theme::dim_style(),
-                            ),
+                            Span::styled(format!("  safe_parse({input}) → "), theme::dim_style()),
                             Span::styled(
                                 val_str,
-                                Style::default()
-                                    .fg(color)
-                                    .add_modifier(Modifier::BOLD),
+                                Style::default().fg(color).add_modifier(Modifier::BOLD),
                             ),
                         ])
                     })
@@ -401,8 +396,11 @@ impl Demo for ErrorHandlingDemo {
 
         if self.step % STEPS != 4 {
             frame.render_widget(
-                Paragraph::new(content_lines)
-                    .block(Block::default().title("Error Handling").borders(Borders::ALL)),
+                Paragraph::new(content_lines).block(
+                    Block::default()
+                        .title("Error Handling")
+                        .borders(Borders::ALL),
+                ),
                 chunks[1],
             );
         }

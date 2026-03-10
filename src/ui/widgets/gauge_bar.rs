@@ -14,7 +14,11 @@ pub struct GaugeBar {
 
 impl GaugeBar {
     pub fn new(label: impl Into<String>, value: f64, color: Color) -> Self {
-        Self { label: label.into(), value, color }
+        Self {
+            label: label.into(),
+            value,
+            color,
+        }
     }
 
     pub fn clamped_value(&self) -> f64 {
@@ -25,7 +29,11 @@ impl GaugeBar {
         let ratio = self.clamped_value();
         let pct = (ratio * 100.0) as u16;
         let gauge = Gauge::default()
-            .block(Block::default().title(self.label.as_str()).borders(Borders::ALL))
+            .block(
+                Block::default()
+                    .title(self.label.as_str())
+                    .borders(Borders::ALL),
+            )
             .gauge_style(Style::default().fg(self.color))
             .percent(pct);
         frame.render_widget(gauge, area);

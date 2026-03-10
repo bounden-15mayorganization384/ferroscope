@@ -56,12 +56,15 @@ struct PlaceholderDemo {
 }
 
 impl PlaceholderDemo {
-    fn new(
-        name: &'static str,
-        description: &'static str,
-        explanation: &'static str,
-    ) -> Self {
-        Self { name, description, explanation, paused: false, speed: 1, tick_count: 0 }
+    fn new(name: &'static str, description: &'static str, explanation: &'static str) -> Self {
+        Self {
+            name,
+            description,
+            explanation,
+            paused: false,
+            speed: 1,
+            tick_count: 0,
+        }
     }
 }
 
@@ -76,7 +79,9 @@ impl Demo for PlaceholderDemo {
         let lines = vec![
             Line::from(Span::styled(
                 format!("🦀  {}", self.name),
-                Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme::RUST_ORANGE)
+                    .add_modifier(Modifier::BOLD),
             )),
             Line::from(""),
             Line::from(Span::styled(self.description, theme::dim_style())),
@@ -87,13 +92,12 @@ impl Demo for PlaceholderDemo {
             )),
         ];
 
-        let para = Paragraph::new(lines)
-            .block(
-                Block::default()
-                    .title(self.name)
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::RUST_ORANGE)),
-            );
+        let para = Paragraph::new(lines).block(
+            Block::default()
+                .title(self.name)
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(theme::RUST_ORANGE)),
+        );
         frame.render_widget(para, area);
     }
 
@@ -286,7 +290,9 @@ mod tests {
         let reg = DemoRegistry::new();
         let backend = TestBackend::new(80, 20);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| reg.render_current(0, f, f.area())).unwrap();
+        terminal
+            .draw(|f| reg.render_current(0, f, f.area()))
+            .unwrap();
     }
 
     #[test]
@@ -294,7 +300,9 @@ mod tests {
         let reg = DemoRegistry::new();
         let backend = TestBackend::new(80, 20);
         let mut terminal = Terminal::new(backend).unwrap();
-        terminal.draw(|f| reg.render_current(100, f, f.area())).unwrap(); // no panic
+        terminal
+            .draw(|f| reg.render_current(100, f, f.area()))
+            .unwrap(); // no panic
     }
 
     #[test]
@@ -357,7 +365,9 @@ mod tests {
         for i in 0..15 {
             let backend = TestBackend::new(80, 20);
             let mut terminal = Terminal::new(backend).unwrap();
-            terminal.draw(|f| reg.render_current(i, f, f.area())).unwrap();
+            terminal
+                .draw(|f| reg.render_current(i, f, f.area()))
+                .unwrap();
         }
     }
 }

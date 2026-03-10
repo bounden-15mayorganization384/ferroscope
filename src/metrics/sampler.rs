@@ -47,7 +47,11 @@ impl MetricsSampler {
             .and_then(|pid| self.sys.process(pid))
             .map(|p| p.memory())
             .unwrap_or(0);
-        MemSample { total_bytes, used_bytes, process_rss_bytes }
+        MemSample {
+            total_bytes,
+            used_bytes,
+            process_rss_bytes,
+        }
     }
 }
 
@@ -73,7 +77,10 @@ mod tests {
         let mut sampler = MetricsSampler::new();
         sampler.refresh();
         let sample = sampler.cpu_sample();
-        assert!(!sample.per_core.is_empty(), "Should have at least 1 CPU core");
+        assert!(
+            !sample.per_core.is_empty(),
+            "Should have at least 1 CPU core"
+        );
     }
 
     #[test]

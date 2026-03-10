@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 const STEPS: usize = 5;
 
@@ -278,7 +278,11 @@ impl Demo for NoStdDemo {
         );
 
         // Right panel: binary size bar chart with animated active-row indicator
-        let pulse = if self.animation_frame % 2 == 0 { "▶ " } else { "  " };
+        let pulse = if self.animation_frame % 2 == 0 {
+            "▶ "
+        } else {
+            "  "
+        };
         let bar_lines: Vec<Line> = BINARY_TIERS
             .iter()
             .enumerate()
@@ -325,15 +329,9 @@ impl Demo for NoStdDemo {
                 ),
                 Span::styled("   Arch: ARM Cortex-M", theme::dim_style()),
                 Span::styled("   OS: ", theme::dim_style()),
-                Span::styled(
-                    "none",
-                    Style::default().fg(theme::CRAB_RED),
-                ),
+                Span::styled("none", Style::default().fg(theme::CRAB_RED)),
                 Span::styled("   Runtime: ", theme::dim_style()),
-                Span::styled(
-                    "none",
-                    Style::default().fg(theme::CRAB_RED),
-                ),
+                Span::styled("none", Style::default().fg(theme::CRAB_RED)),
                 Span::styled("   GC: ", theme::dim_style()),
                 Span::styled(
                     "impossible",

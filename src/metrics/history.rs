@@ -2,8 +2,8 @@
 #[derive(Debug, Clone)]
 pub struct RingBuffer<T> {
     data: Vec<T>,
-    head: usize,   // index where next item will be written
-    len: usize,    // number of valid items
+    head: usize, // index where next item will be written
+    len: usize,  // number of valid items
     capacity: usize,
 }
 
@@ -14,7 +14,12 @@ impl<T: Default + Clone> RingBuffer<T> {
         } else {
             vec![T::default(); capacity]
         };
-        Self { data, head: 0, len: 0, capacity }
+        Self {
+            data,
+            head: 0,
+            len: 0,
+            capacity,
+        }
     }
 
     pub fn push(&mut self, val: T) {

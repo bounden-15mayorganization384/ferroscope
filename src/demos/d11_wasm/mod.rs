@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Bar, BarChart, BarGroup, Block, Borders, Gauge, List, ListItem, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct WasmDemo {
@@ -175,10 +175,7 @@ impl Demo for WasmDemo {
                                     .fg(theme::BORROW_YELLOW)
                                     .add_modifier(Modifier::BOLD),
                             )),
-                            Line::from(Span::styled(
-                                format!("  {}", desc),
-                                theme::dim_style(),
-                            )),
+                            Line::from(Span::styled(format!("  {}", desc), theme::dim_style())),
                             Line::from(""),
                         ])
                     })
@@ -568,7 +565,10 @@ mod tests {
         let rust_kb = sizes.iter().find(|(l, _)| *l == "Rust").unwrap().1;
         for (lang, kb) in sizes {
             if *lang != "Rust" {
-                assert!(rust_kb < *kb, "Rust ({rust_kb} KB) should be smaller than {lang} ({kb} KB)");
+                assert!(
+                    rust_kb < *kb,
+                    "Rust ({rust_kb} KB) should be smaller than {lang} ({kb} KB)"
+                );
             }
         }
     }

@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Bar, BarChart, BarGroup, Block, Borders, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::{Duration, Instant};
 
 /// Result from a single sort benchmark run.
 #[derive(Debug, Clone)]
@@ -35,21 +35,23 @@ pub enum PerfPhase {
 impl PerfPhase {
     pub fn next(&self) -> Self {
         match self {
-            PerfPhase::Sort        => PerfPhase::Arithmetic,
-            PerfPhase::Arithmetic  => PerfPhase::Allocation,
-            PerfPhase::Allocation  => PerfPhase::LangCompare,
+            PerfPhase::Sort => PerfPhase::Arithmetic,
+            PerfPhase::Arithmetic => PerfPhase::Allocation,
+            PerfPhase::Allocation => PerfPhase::LangCompare,
             PerfPhase::LangCompare => PerfPhase::Summary,
-            PerfPhase::Summary     => PerfPhase::Sort,
+            PerfPhase::Summary => PerfPhase::Sort,
         }
     }
 
     pub fn title(&self) -> &'static str {
         match self {
-            PerfPhase::Sort        => "Sort Benchmark — sort_unstable vs sort (stable)",
-            PerfPhase::Arithmetic  => "Arithmetic Throughput — integer ops/sec",
-            PerfPhase::Allocation  => "Allocation Throughput — heap allocs/sec",
-            PerfPhase::LangCompare => "Language Comparison — relative sort performance (illustrative)",
-            PerfPhase::Summary     => "Performance Summary — all benchmarks",
+            PerfPhase::Sort => "Sort Benchmark — sort_unstable vs sort (stable)",
+            PerfPhase::Arithmetic => "Arithmetic Throughput — integer ops/sec",
+            PerfPhase::Allocation => "Allocation Throughput — heap allocs/sec",
+            PerfPhase::LangCompare => {
+                "Language Comparison — relative sort performance (illustrative)"
+            }
+            PerfPhase::Summary => "Performance Summary — all benchmarks",
         }
     }
 }
@@ -58,11 +60,11 @@ impl PerfPhase {
 /// These are educational approximations, clearly labeled as such in the UI.
 pub fn lang_compare_data() -> &'static [(&'static str, u64, Color)] {
     &[
-        ("Rust (sort_unstable)", 5,   theme::SAFE_GREEN),
-        ("C++ (std::sort)",      6,   theme::HEAP_BLUE),
-        ("Go (sort.Slice)",      18,  theme::STACK_CYAN),
-        ("Java (Arrays.sort)",   22,  theme::BORROW_YELLOW),
-        ("Python (list.sort)",   420, theme::CRAB_RED),
+        ("Rust (sort_unstable)", 5, theme::SAFE_GREEN),
+        ("C++ (std::sort)", 6, theme::HEAP_BLUE),
+        ("Go (sort.Slice)", 18, theme::STACK_CYAN),
+        ("Java (Arrays.sort)", 22, theme::BORROW_YELLOW),
+        ("Python (list.sort)", 420, theme::CRAB_RED),
     ]
 }
 
@@ -106,7 +108,7 @@ impl PerformanceDemo {
     fn run_all_benches(&mut self) {
         let n = self.bench_n;
         let ns_unstable = bench_std_sort_unstable(n);
-        let ns_stable   = bench_std_sort_stable(n);
+        let ns_stable = bench_std_sort_stable(n);
 
         self.sort_results = vec![
             SortResult::new("sort_unstable", n, ns_unstable),
@@ -119,14 +121,18 @@ impl PerformanceDemo {
 
         // Cycle bench_n: 1_000 -> 10_000 -> 100_000 -> 1_000
         self.bench_n = match self.bench_n {
-            1_000   => 10_000,
-            10_000  => 100_000,
-            _       => 1_000,
+            1_000 => 10_000,
+            10_000 => 100_000,
+            _ => 1_000,
         };
     }
 
     pub fn best_sort_ns(&self) -> u64 {
-        self.sort_results.iter().map(|r| r.ns_per_op).min().unwrap_or(0)
+        self.sort_results
+            .iter()
+            .map(|r| r.ns_per_op)
+            .min()
+            .unwrap_or(0)
     }
 }
 
@@ -140,7 +146,9 @@ pub fn bench_std_sort_unstable(n: usize) -> u64 {
     let ns = start.elapsed().as_nanos() as u64;
     // Prevent optimizer from eliding the result
     let _ = data.last();
-    if n == 0 { return 0; }
+    if n == 0 {
+        return 0;
+    }
     (ns / n as u64).max(1)
 }
 
@@ -153,7 +161,9 @@ pub fn bench_std_sort_stable(n: usize) -> u64 {
     data.sort();
     let ns = start.elapsed().as_nanos() as u64;
     let _ = data.last();
-    if n == 0 { return 0; }
+    if n == 0 {
+        return 0;
+    }
     (ns / n as u64).max(1)
 }
 
@@ -164,10 +174,7 @@ pub fn bench_arithmetic_ops_per_sec() -> u64 {
     let mut acc: u64 = 1;
     for i in 0..OPS {
         // Mix of multiply, add, xor to prevent trivial optimization
-        acc = acc
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(i)
-            ^ (i << 17);
+        acc = acc.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(i) ^ (i << 17);
     }
     // Prevent dead-code elimination
     let _ = acc;
@@ -196,12 +203,16 @@ pub fn bench_alloc_ops_per_sec() -> u64 {
 }
 
 impl Default for PerformanceDemo {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Demo for PerformanceDemo {
     fn tick(&mut self, dt: Duration) {
-        if self.paused { return; }
+        if self.paused {
+            return;
+        }
         self.tick_count = self.tick_count.wrapping_add(1);
         self.phase_timer += dt.as_secs_f64();
         if self.phase_timer >= self.phase_period_secs() {
@@ -218,9 +229,9 @@ impl Demo for PerformanceDemo {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),  // title
-                Constraint::Min(10),    // chart area
-                Constraint::Length(4),  // stats bar
+                Constraint::Length(3), // title
+                Constraint::Min(10),   // chart area
+                Constraint::Length(4), // stats bar
             ])
             .split(area);
 
@@ -228,10 +239,15 @@ impl Demo for PerformanceDemo {
         frame.render_widget(
             Paragraph::new(Span::styled(
                 self.phase.title(),
-                Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme::RUST_ORANGE)
+                    .add_modifier(Modifier::BOLD),
             ))
-            .block(Block::default().borders(Borders::ALL)
-                .border_style(Style::default().fg(theme::RUST_ORANGE))),
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::RUST_ORANGE)),
+            ),
             chunks[0],
         );
 
@@ -239,21 +255,28 @@ impl Demo for PerformanceDemo {
         match self.phase {
             PerfPhase::Sort => {
                 // BarChart: sort_unstable vs sort (stable) ns/element
-                let bars: Vec<Bar> = self.sort_results.iter().map(|r| {
-                    Bar::default()
-                        .value(r.ns_per_op)
-                        .label(Line::from(r.name))
-                        .style(Style::default().fg(theme::SAFE_GREEN))
-                        .value_style(
-                            Style::default()
-                                .fg(theme::RUST_ORANGE)
-                                .add_modifier(Modifier::BOLD),
-                        )
-                }).collect();
+                let bars: Vec<Bar> = self
+                    .sort_results
+                    .iter()
+                    .map(|r| {
+                        Bar::default()
+                            .value(r.ns_per_op)
+                            .label(Line::from(r.name))
+                            .style(Style::default().fg(theme::SAFE_GREEN))
+                            .value_style(
+                                Style::default()
+                                    .fg(theme::RUST_ORANGE)
+                                    .add_modifier(Modifier::BOLD),
+                            )
+                    })
+                    .collect();
 
                 let group = BarGroup::default()
                     .label(Line::from(Span::styled(
-                        format!("n = {} elements", self.sort_results.first().map(|r| r.n).unwrap_or(0)),
+                        format!(
+                            "n = {} elements",
+                            self.sort_results.first().map(|r| r.n).unwrap_or(0)
+                        ),
                         theme::dim_style(),
                     )))
                     .bars(&bars);
@@ -263,7 +286,12 @@ impl Demo for PerformanceDemo {
                     .bar_width(14)
                     .bar_gap(3)
                     .max(
-                        self.sort_results.iter().map(|r| r.ns_per_op).max().unwrap_or(1).max(1),
+                        self.sort_results
+                            .iter()
+                            .map(|r| r.ns_per_op)
+                            .max()
+                            .unwrap_or(1)
+                            .max(1),
                     )
                     .block(
                         Block::default()
@@ -276,7 +304,12 @@ impl Demo for PerformanceDemo {
 
             PerfPhase::Arithmetic => {
                 let lines = vec![
-                    Line::from(Span::styled("Integer Arithmetic Ops/sec:", Style::default().fg(theme::BORROW_YELLOW).add_modifier(Modifier::BOLD))),
+                    Line::from(Span::styled(
+                        "Integer Arithmetic Ops/sec:",
+                        Style::default()
+                            .fg(theme::BORROW_YELLOW)
+                            .add_modifier(Modifier::BOLD),
+                    )),
                     Line::from(""),
                     Line::from(Span::styled(
                         "Benchmark: x = x.wrapping_mul(LCG) + i ^ (i << 17)",
@@ -289,7 +322,9 @@ impl Demo for PerformanceDemo {
                     Line::from(""),
                     Line::from(Span::styled(
                         format!("  Result: {:>14} ops/sec", fmt_ops(self.arith_ops_per_sec)),
-                        Style::default().fg(theme::BORROW_YELLOW).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(theme::BORROW_YELLOW)
+                            .add_modifier(Modifier::BOLD),
                     )),
                     Line::from(""),
                     Line::from(Span::styled(
@@ -298,16 +333,24 @@ impl Demo for PerformanceDemo {
                     )),
                 ];
                 frame.render_widget(
-                    Paragraph::new(lines)
-                        .block(Block::default().title("Arithmetic Throughput").borders(Borders::ALL)
-                            .border_style(Style::default().fg(theme::BORROW_YELLOW))),
+                    Paragraph::new(lines).block(
+                        Block::default()
+                            .title("Arithmetic Throughput")
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(theme::BORROW_YELLOW)),
+                    ),
                     chunks[1],
                 );
             }
 
             PerfPhase::Allocation => {
                 let lines = vec![
-                    Line::from(Span::styled("Heap Allocation Ops/sec:", Style::default().fg(theme::HEAP_BLUE).add_modifier(Modifier::BOLD))),
+                    Line::from(Span::styled(
+                        "Heap Allocation Ops/sec:",
+                        Style::default()
+                            .fg(theme::HEAP_BLUE)
+                            .add_modifier(Modifier::BOLD),
+                    )),
                     Line::from(""),
                     Line::from(Span::styled(
                         "Benchmark: Vec::with_capacity(64) + immediate drop",
@@ -319,8 +362,13 @@ impl Demo for PerformanceDemo {
                     )),
                     Line::from(""),
                     Line::from(Span::styled(
-                        format!("  Result: {:>14} allocs/sec", fmt_ops(self.alloc_ops_per_sec)),
-                        Style::default().fg(theme::HEAP_BLUE).add_modifier(Modifier::BOLD),
+                        format!(
+                            "  Result: {:>14} allocs/sec",
+                            fmt_ops(self.alloc_ops_per_sec)
+                        ),
+                        Style::default()
+                            .fg(theme::HEAP_BLUE)
+                            .add_modifier(Modifier::BOLD),
                     )),
                     Line::from(""),
                     Line::from(Span::styled(
@@ -329,9 +377,12 @@ impl Demo for PerformanceDemo {
                     )),
                 ];
                 frame.render_widget(
-                    Paragraph::new(lines)
-                        .block(Block::default().title("Allocation Throughput").borders(Borders::ALL)
-                            .border_style(Style::default().fg(theme::HEAP_BLUE))),
+                    Paragraph::new(lines).block(
+                        Block::default()
+                            .title("Allocation Throughput")
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(theme::HEAP_BLUE)),
+                    ),
                     chunks[1],
                 );
             }
@@ -343,17 +394,20 @@ impl Demo for PerformanceDemo {
                     .split(chunks[1]);
 
                 let data = lang_compare_data();
-                let bars: Vec<Bar> = data.iter().map(|(name, value, color)| {
-                    Bar::default()
-                        .value(*value)
-                        .label(Line::from(*name))
-                        .style(Style::default().fg(*color))
-                        .value_style(
-                            Style::default()
-                                .fg(theme::TEXT_PRIMARY)
-                                .add_modifier(Modifier::BOLD),
-                        )
-                }).collect();
+                let bars: Vec<Bar> = data
+                    .iter()
+                    .map(|(name, value, color)| {
+                        Bar::default()
+                            .value(*value)
+                            .label(Line::from(*name))
+                            .style(Style::default().fg(*color))
+                            .value_style(
+                                Style::default()
+                                    .fg(theme::TEXT_PRIMARY)
+                                    .add_modifier(Modifier::BOLD),
+                            )
+                    })
+                    .collect();
 
                 let group = BarGroup::default()
                     .label(Line::from(Span::styled(
@@ -387,17 +441,54 @@ impl Demo for PerformanceDemo {
             }
 
             PerfPhase::Summary => {
-                let s0 = if self.sort_results.len() > 0 { self.sort_results[0].ns_per_op.max(1) as f64 } else { 1.0 };
-                let s1 = if self.sort_results.len() > 1 { self.sort_results[1].ns_per_op.max(1) as f64 } else { 1.0 };
-                let arith_ns = if self.arith_ops_per_sec > 0 { 1_000_000_000.0 / self.arith_ops_per_sec as f64 } else { 1.0 };
-                let alloc_ns = if self.alloc_ops_per_sec > 0 { 1_000_000_000.0 / self.alloc_ops_per_sec as f64 } else { 1.0 };
+                let s0 = if self.sort_results.len() > 0 {
+                    self.sort_results[0].ns_per_op.max(1) as f64
+                } else {
+                    1.0
+                };
+                let s1 = if self.sort_results.len() > 1 {
+                    self.sort_results[1].ns_per_op.max(1) as f64
+                } else {
+                    1.0
+                };
+                let arith_ns = if self.arith_ops_per_sec > 0 {
+                    1_000_000_000.0 / self.arith_ops_per_sec as f64
+                } else {
+                    1.0
+                };
+                let alloc_ns = if self.alloc_ops_per_sec > 0 {
+                    1_000_000_000.0 / self.alloc_ops_per_sec as f64
+                } else {
+                    1.0
+                };
                 let total = (s0 + s1 + arith_ns + alloc_ns).max(1.0);
                 let mut fg = crate::ui::widgets::FlameGraph::new();
                 fg.color = crate::theme::SAFE_GREEN;
-                fg.push_frame(format!("sort_unstable  {}ns/elem", self.sort_results.get(0).map(|r| r.ns_per_op).unwrap_or(0)), s0 / total);
-                fg.push_frame(format!("sort (stable)  {}ns/elem", self.sort_results.get(1).map(|r| r.ns_per_op).unwrap_or(0)), s1 / total);
-                fg.push_frame(format!("arithmetic     {} Mops/s", self.arith_ops_per_sec / 1_000_000), arith_ns / total);
-                fg.push_frame(format!("heap alloc     {} Kops/s", self.alloc_ops_per_sec / 1_000), alloc_ns / total);
+                fg.push_frame(
+                    format!(
+                        "sort_unstable  {}ns/elem",
+                        self.sort_results.get(0).map(|r| r.ns_per_op).unwrap_or(0)
+                    ),
+                    s0 / total,
+                );
+                fg.push_frame(
+                    format!(
+                        "sort (stable)  {}ns/elem",
+                        self.sort_results.get(1).map(|r| r.ns_per_op).unwrap_or(0)
+                    ),
+                    s1 / total,
+                );
+                fg.push_frame(
+                    format!(
+                        "arithmetic     {} Mops/s",
+                        self.arith_ops_per_sec / 1_000_000
+                    ),
+                    arith_ns / total,
+                );
+                fg.push_frame(
+                    format!("heap alloc     {} Kops/s", self.alloc_ops_per_sec / 1_000),
+                    alloc_ns / total,
+                );
                 fg.render(frame, chunks[1]);
             }
         }
@@ -408,13 +499,12 @@ impl Demo for PerformanceDemo {
                 format!(" run #{:3}  ", self.run_count),
                 Style::default().fg(theme::ASYNC_PURPLE),
             ),
-            Span::styled(
-                format!("n = {:>7}  ", self.bench_n),
-                theme::dim_style(),
-            ),
+            Span::styled(format!("n = {:>7}  ", self.bench_n), theme::dim_style()),
             Span::styled(
                 format!("sort_unstable: {} ns/elem", self.best_sort_ns()),
-                Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme::SAFE_GREEN)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!("  arith: {} ops/sec", fmt_ops(self.arith_ops_per_sec)),
@@ -427,8 +517,12 @@ impl Demo for PerformanceDemo {
         );
     }
 
-    fn name(&self) -> &'static str { "Performance Benchmarks" }
-    fn description(&self) -> &'static str { "Real-time micro-benchmarks: sort, arithmetic, and allocation throughput." }
+    fn name(&self) -> &'static str {
+        "Performance Benchmarks"
+    }
+    fn description(&self) -> &'static str {
+        "Real-time micro-benchmarks: sort, arithmetic, and allocation throughput."
+    }
     fn explanation(&self) -> &'static str {
         "Rust delivers C-like performance without a garbage collector. \
         sort_unstable is faster than stable sort because it doesn't preserve \
@@ -449,10 +543,18 @@ impl Demo for PerformanceDemo {
         self.paused = false;
         self.run_all_benches();
     }
-    fn toggle_pause(&mut self) { self.paused = !self.paused; }
-    fn is_paused(&self) -> bool { self.paused }
-    fn set_speed(&mut self, speed: u8) { self.speed = speed.clamp(1, 10); }
-    fn speed(&self) -> u8 { self.speed }
+    fn toggle_pause(&mut self) {
+        self.paused = !self.paused;
+    }
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+    fn set_speed(&mut self, speed: u8) {
+        self.speed = speed.clamp(1, 10);
+    }
+    fn speed(&self) -> u8 {
+        self.speed
+    }
 }
 
 /// Format large op counts as e.g. "1.23 B", "456 M", "789 K".
@@ -478,13 +580,21 @@ mod tests {
     #[test]
     fn test_bench_sort_unstable_nonzero() {
         let ns = bench_std_sort_unstable(1_000);
-        assert!(ns > 0, "bench_std_sort_unstable should return > 0, got {}", ns);
+        assert!(
+            ns > 0,
+            "bench_std_sort_unstable should return > 0, got {}",
+            ns
+        );
     }
 
     #[test]
     fn test_bench_sort_stable_nonzero() {
         let ns = bench_std_sort_stable(1_000);
-        assert!(ns > 0, "bench_std_sort_stable should return > 0, got {}", ns);
+        assert!(
+            ns > 0,
+            "bench_std_sort_stable should return > 0, got {}",
+            ns
+        );
     }
 
     #[test]
@@ -515,7 +625,11 @@ mod tests {
     #[test]
     fn test_bench_arithmetic_ops_per_sec_nonzero() {
         let ops = bench_arithmetic_ops_per_sec();
-        assert!(ops > 0, "bench_arithmetic_ops_per_sec should return > 0, got {}", ops);
+        assert!(
+            ops > 0,
+            "bench_arithmetic_ops_per_sec should return > 0, got {}",
+            ops
+        );
         // Sanity: modern CPUs do > 10M integer ops/sec
         assert!(ops > 1_000_000, "expected > 1M ops/sec, got {}", ops);
     }
@@ -523,7 +637,11 @@ mod tests {
     #[test]
     fn test_bench_alloc_ops_per_sec_nonzero() {
         let ops = bench_alloc_ops_per_sec();
-        assert!(ops > 0, "bench_alloc_ops_per_sec should return > 0, got {}", ops);
+        assert!(
+            ops > 0,
+            "bench_alloc_ops_per_sec should return > 0, got {}",
+            ops
+        );
         // Sanity: should do at least 1K allocs/sec
         assert!(ops > 1_000, "expected > 1K allocs/sec, got {}", ops);
     }
@@ -627,7 +745,14 @@ mod tests {
         let d = PerformanceDemo::new();
         let best = d.best_sort_ns();
         assert!(best > 0);
-        assert!(best <= d.sort_results.iter().map(|r| r.ns_per_op).max().unwrap_or(0));
+        assert!(
+            best <= d
+                .sort_results
+                .iter()
+                .map(|r| r.ns_per_op)
+                .max()
+                .unwrap_or(0)
+        );
     }
 
     #[test]
@@ -702,7 +827,12 @@ mod tests {
     #[test]
     fn test_render_all_phases() {
         let mut d = PerformanceDemo::new();
-        let phases = [PerfPhase::Sort, PerfPhase::Arithmetic, PerfPhase::Allocation, PerfPhase::Summary];
+        let phases = [
+            PerfPhase::Sort,
+            PerfPhase::Arithmetic,
+            PerfPhase::Allocation,
+            PerfPhase::Summary,
+        ];
         for phase in &phases {
             d.phase = phase.clone();
             let backend = TestBackend::new(120, 30);
@@ -753,7 +883,8 @@ mod tests {
     #[test]
     fn test_lang_compare_data_rust_fastest() {
         let data = lang_compare_data();
-        let rust_ns = data.iter()
+        let rust_ns = data
+            .iter()
             .find(|(name, _, _)| name.contains("Rust"))
             .map(|(_, ns, _)| *ns)
             .expect("Rust entry not found");

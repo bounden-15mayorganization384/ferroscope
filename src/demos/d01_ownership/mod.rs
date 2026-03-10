@@ -1,4 +1,4 @@
-use std::time::Duration;
+use crate::{demos::Demo, theme};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use crate::{demos::Demo, theme};
+use std::time::Duration;
 
 const STEPS: usize = 8;
 
@@ -14,7 +14,7 @@ const STEPS: usize = 8;
 #[derive(Debug, Clone)]
 pub struct OwnershipStep {
     pub title: &'static str,
-    pub code_lines: &'static [(&'static str, bool)],  // (line, highlighted)
+    pub code_lines: &'static [(&'static str, bool)], // (line, highlighted)
     pub explanation: &'static str,
     pub s1_state: VarState,
     pub s2_state: VarState,
@@ -25,8 +25,8 @@ pub struct OwnershipStep {
 pub enum VarState {
     Hidden,
     Owned,
-    Moved,     // grayed out
-    Borrowed,  // yellow
+    Moved,    // grayed out
+    Borrowed, // yellow
 }
 
 impl VarState {
@@ -199,12 +199,16 @@ pub fn get_step(step: usize) -> OwnershipStep {
 }
 
 impl Default for OwnershipDemo {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Demo for OwnershipDemo {
     fn tick(&mut self, dt: Duration) {
-        if self.paused { return; }
+        if self.paused {
+            return;
+        }
         self.tick_count = self.tick_count.wrapping_add(1);
         self.step_timer += dt.as_secs_f64();
         if self.step_timer >= self.step_duration_secs() {
@@ -232,9 +236,15 @@ impl Demo for OwnershipDemo {
         // Title
         let title = Paragraph::new(Line::from(Span::styled(
             info.title,
-            Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme::RUST_ORANGE)
+                .add_modifier(Modifier::BOLD),
         )))
-        .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme::RUST_ORANGE)));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(theme::RUST_ORANGE)),
+        );
         frame.render_widget(title, chunks[0]);
 
         // Main view: variable boxes + code panel
@@ -265,14 +275,22 @@ impl Demo for OwnershipDemo {
 
         // Explanation
         let expl = Paragraph::new(info.explanation)
-            .block(Block::default().title("What's happening").borders(Borders::ALL)
-                .border_style(Style::default().fg(theme::BORROW_YELLOW)))
+            .block(
+                Block::default()
+                    .title("What's happening")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::BORROW_YELLOW)),
+            )
             .wrap(ratatui::widgets::Wrap { trim: true });
         frame.render_widget(expl, chunks[2]);
     }
 
-    fn name(&self) -> &'static str { "Ownership & Borrowing" }
-    fn description(&self) -> &'static str { "Rust's compile-time memory safety — no GC required." }
+    fn name(&self) -> &'static str {
+        "Ownership & Borrowing"
+    }
+    fn description(&self) -> &'static str {
+        "Rust's compile-time memory safety — no GC required."
+    }
     fn explanation(&self) -> &'static str {
         "Every value in Rust has exactly one owner. When the owner goes out of scope, \
         the value is dropped (freed) automatically via the Drop trait. \
@@ -287,11 +305,21 @@ impl Demo for OwnershipDemo {
         self.paused = false;
         self.vs_mode = false;
     }
-    fn toggle_pause(&mut self) { self.paused = !self.paused; }
-    fn is_paused(&self) -> bool { self.paused }
-    fn set_speed(&mut self, speed: u8) { self.speed = speed.clamp(1, 10); }
-    fn speed(&self) -> u8 { self.speed }
-    fn toggle_vsmode(&mut self) { self.toggle_vs_mode(); }
+    fn toggle_pause(&mut self) {
+        self.paused = !self.paused;
+    }
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+    fn set_speed(&mut self, speed: u8) {
+        self.speed = speed.clamp(1, 10);
+    }
+    fn speed(&self) -> u8 {
+        self.speed
+    }
+    fn toggle_vsmode(&mut self) {
+        self.toggle_vs_mode();
+    }
 }
 
 impl OwnershipDemo {
@@ -299,20 +327,22 @@ impl OwnershipDemo {
     fn render_vs_mode(&self, frame: &mut Frame, area: Rect) {
         let vs_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(3),
-                Constraint::Min(15),
-            ])
+            .constraints([Constraint::Length(3), Constraint::Min(15)])
             .split(area);
 
         // Title bar
         frame.render_widget(
             Paragraph::new(Span::styled(
                 "Rust vs C++ — Use-After-Free (press V to toggle)",
-                Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme::RUST_ORANGE)
+                    .add_modifier(Modifier::BOLD),
             ))
-            .block(Block::default().borders(Borders::ALL)
-                .border_style(Style::default().fg(theme::RUST_ORANGE))),
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(theme::RUST_ORANGE)),
+            ),
             vs_chunks[0],
         );
 
@@ -329,15 +359,18 @@ impl OwnershipDemo {
         cpp_lines.push(Line::from(""));
         cpp_lines.push(Line::from(Span::styled(
             "❌ COMPILES — Undefined Behavior",
-            Style::default().fg(theme::CRAB_RED).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme::CRAB_RED)
+                .add_modifier(Modifier::BOLD),
         )));
 
         frame.render_widget(
-            Paragraph::new(cpp_lines)
-                .block(Block::default()
+            Paragraph::new(cpp_lines).block(
+                Block::default()
                     .title("C++ (DANGER)")
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::CRAB_RED))),
+                    .border_style(Style::default().fg(theme::CRAB_RED)),
+            ),
             mid[0],
         );
 
@@ -349,15 +382,18 @@ impl OwnershipDemo {
         rust_lines.push(Line::from(""));
         rust_lines.push(Line::from(Span::styled(
             "✓ COMPILE ERROR — Bug caught at compile time",
-            Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme::SAFE_GREEN)
+                .add_modifier(Modifier::BOLD),
         )));
 
         frame.render_widget(
-            Paragraph::new(rust_lines)
-                .block(Block::default()
+            Paragraph::new(rust_lines).block(
+                Block::default()
                     .title("Rust (SAFE)")
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(theme::SAFE_GREEN))),
+                    .border_style(Style::default().fg(theme::SAFE_GREEN)),
+            ),
             mid[1],
         );
     }
@@ -365,12 +401,20 @@ impl OwnershipDemo {
 
 fn var_box_line<'a>(name: &'static str, state: &VarState, value: &'static str) -> Line<'a> {
     if *state == VarState::Hidden {
-        return Line::from(Span::styled(format!("  {}: <not yet declared>", name), theme::dim_style()));
+        return Line::from(Span::styled(
+            format!("  {}: <not yet declared>", name),
+            theme::dim_style(),
+        ));
     }
     Line::from(vec![
         Span::styled(format!("  {}: ", name), Style::default().fg(state.color())),
         Span::styled(value, Style::default().fg(state.color())),
-        Span::styled(format!("  [{}]", state.label()), Style::default().fg(state.color()).add_modifier(Modifier::DIM)),
+        Span::styled(
+            format!("  [{}]", state.label()),
+            Style::default()
+                .fg(state.color())
+                .add_modifier(Modifier::DIM),
+        ),
     ])
 }
 
@@ -391,19 +435,29 @@ mod tests {
     use super::*;
     use ratatui::{backend::TestBackend, Terminal};
 
-    fn new_demo() -> OwnershipDemo { OwnershipDemo::new() }
+    fn new_demo() -> OwnershipDemo {
+        OwnershipDemo::new()
+    }
 
     #[test]
-    fn test_demo_trait_name() { assert_eq!(new_demo().name(), "Ownership & Borrowing"); }
+    fn test_demo_trait_name() {
+        assert_eq!(new_demo().name(), "Ownership & Borrowing");
+    }
 
     #[test]
-    fn test_demo_trait_description() { assert!(!new_demo().description().is_empty()); }
+    fn test_demo_trait_description() {
+        assert!(!new_demo().description().is_empty());
+    }
 
     #[test]
-    fn test_demo_trait_explanation() { assert!(!new_demo().explanation().is_empty()); }
+    fn test_demo_trait_explanation() {
+        assert!(!new_demo().explanation().is_empty());
+    }
 
     #[test]
-    fn test_is_paused_initially_false() { assert!(!new_demo().is_paused()); }
+    fn test_is_paused_initially_false() {
+        assert!(!new_demo().is_paused());
+    }
 
     #[test]
     fn test_toggle_pause() {
@@ -563,7 +617,10 @@ mod tests {
         let lines = cpp_uaf_lines();
         assert!(lines.len() >= 5, "expected >= 5 lines, got {}", lines.len());
         for line in lines {
-            assert!(!line.is_empty(), "cpp_uaf_lines should have no empty entries");
+            assert!(
+                !line.is_empty(),
+                "cpp_uaf_lines should have no empty entries"
+            );
         }
     }
 
@@ -572,7 +629,10 @@ mod tests {
         let lines = rust_safe_lines();
         assert!(lines.len() >= 5, "expected >= 5 lines, got {}", lines.len());
         for line in lines {
-            assert!(!line.is_empty(), "rust_safe_lines should have no empty entries");
+            assert!(
+                !line.is_empty(),
+                "rust_safe_lines should have no empty entries"
+            );
         }
     }
 }
