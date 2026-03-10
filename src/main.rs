@@ -20,8 +20,9 @@ use app::App;
 use demos::DemoRegistry;
 use events::key_event_to_app_event;
 
-const TICK_RATE_MS: u64 = 50; // 20 fps
+const DEFAULT_FPS: u64 = 30;
 const TOUR_DEMO_SECS: u64 = 8; // seconds per demo in tour mode
+const VERSION: &str = "0.1.0";
 
 // ─── CLI args ────────────────────────────────────────────────────────────────
 
@@ -29,17 +30,25 @@ struct CliArgs {
     tour: bool,
     screenshot: bool,
     screenshot_dir: String,
+    fps: u64,
+    version: bool,
 }
 
 fn parse_args() -> CliArgs {
     let args: Vec<String> = std::env::args().collect();
     let tour = args.iter().any(|a| a == "--tour");
     let screenshot = args.iter().any(|a| a == "--screenshot");
+    let version = args.iter().any(|a| a == "--version");
     let screenshot_dir = args.windows(2)
         .find(|w| w[0] == "--screenshot-dir")
         .map(|w| w[1].clone())
         .unwrap_or_else(|| "ferroscope-screenshots".into());
-    CliArgs { tour, screenshot, screenshot_dir }
+    let fps = args.windows(2)
+        .find(|w| w[0] == "--fps")
+        .and_then(|w| w[1].parse::<u64>().ok())
+        .unwrap_or(DEFAULT_FPS)
+        .clamp(5, 120);
+    CliArgs { tour, screenshot, screenshot_dir, fps, version }
 }
 
 // ─── Terminal setup / teardown ────────────────────────────────────────────────
@@ -113,9 +122,9 @@ fn run_app(
     app: &mut App,
     registry: &mut DemoRegistry,
     tour_mode: bool,
+    tick_rate: Duration,
 ) -> Result<()> {
-    let tick_rate = Duration::from_millis(TICK_RATE_MS);
-    let ticks_per_demo = TOUR_DEMO_SECS * (1000 / TICK_RATE_MS);
+    let ticks_per_demo = TOUR_DEMO_SECS * (1000 / tick_rate.as_millis().max(1) as u64);
     let mut tour_tick: u64 = 0;
 
     loop {
@@ -124,12 +133,21 @@ fn run_app(
         if event::poll(tick_rate)? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
+                    // Feed raw key to Konami tracker
+                    if app.check_konami(key.code) {
+                        // Konami activated — handled via app.konami_active
+                    }
+
                     if let Some(app_event) = key_event_to_app_event(key) {
                         let is_reset = app_event == events::AppEvent::Reset;
+                        let is_vsmode = app_event == events::AppEvent::ToggleVsMode;
                         let current = app.current_demo;
                         app.handle_event(app_event);
                         if is_reset {
                             registry.reset_current(current);
+                        }
+                        if is_vsmode {
+                            registry.toggle_vsmode_current(current);
                         }
                     }
                 }
@@ -149,6 +167,7 @@ fn run_app(
                     app.handle_event(events::AppEvent::NextDemo);
                     // After wrapping back to demo 0, quit
                     if app.current_demo == 0 {
+                        app.unlock_evangelist();
                         break;
                     }
                 }
@@ -165,6 +184,12 @@ fn run_app(
 
 fn main() -> Result<()> {
     let cli = parse_args();
+
+    if cli.version {
+        println!("ferroscope v{}", VERSION);
+        return Ok(());
+    }
+
     let registry = DemoRegistry::new();
 
     // Screenshot mode: headless, no terminal needed
@@ -172,6 +197,7 @@ fn main() -> Result<()> {
         return run_screenshot_mode(&cli.screenshot_dir, &registry);
     }
 
+    let tick_rate = Duration::from_millis(1000 / cli.fps);
     let mut terminal = setup_terminal()?;
     let mut app = App::new(15);
     let mut registry_mut = registry;
@@ -181,7 +207,7 @@ fn main() -> Result<()> {
         app.show_explanation = true;
     }
 
-    let result = run_app(&mut terminal, &mut app, &mut registry_mut, cli.tour);
+    let result = run_app(&mut terminal, &mut app, &mut registry_mut, cli.tour, tick_rate);
     restore_terminal(&mut terminal)?;
 
     result
@@ -194,8 +220,8 @@ mod tests {
     use ratatui::backend::TestBackend;
 
     #[test]
-    fn test_tick_rate_constant() {
-        assert_eq!(TICK_RATE_MS, 50);
+    fn test_default_fps_constant() {
+        assert_eq!(DEFAULT_FPS, 30);
     }
 
     #[test]
@@ -205,15 +231,18 @@ mod tests {
 
     #[test]
     fn test_parse_args_defaults() {
-        // Can't easily test env::args in unit tests, but verify struct fields work
         let cli = CliArgs {
             tour: false,
             screenshot: false,
             screenshot_dir: "test-dir".into(),
+            fps: 30,
+            version: false,
         };
         assert!(!cli.tour);
         assert!(!cli.screenshot);
         assert_eq!(cli.screenshot_dir, "test-dir");
+        assert_eq!(cli.fps, 30);
+        assert!(!cli.version);
     }
 
     #[test]
@@ -233,10 +262,10 @@ mod tests {
         registry.reset_current(current);
 
         app.paused = true;
-        registry.tick_current(app.current_demo, Duration::from_millis(50));
+        registry.tick_current(app.current_demo, Duration::from_millis(33));
 
         app.paused = false;
-        registry.tick_current(app.current_demo, Duration::from_millis(50));
+        registry.tick_current(app.current_demo, Duration::from_millis(33));
 
         terminal.draw(|f| ui::draw(f, &app, &registry)).unwrap();
     }
@@ -248,6 +277,15 @@ mod tests {
         let current = app.current_demo;
         app.handle_event(AppEvent::Reset);
         registry.reset_current(current);
+    }
+
+    #[test]
+    fn test_app_vsmode_interaction() {
+        let mut app = App::new(15);
+        let mut registry = DemoRegistry::new();
+        let current = app.current_demo;
+        app.handle_event(AppEvent::ToggleVsMode);
+        registry.toggle_vsmode_current(current);
     }
 
     #[test]
@@ -274,9 +312,29 @@ mod tests {
 
     #[test]
     fn test_tour_mode_flag() {
-        // Verify tour mode sets show_explanation on startup
         let mut app = App::new(15);
-        app.show_explanation = true; // as set in tour mode
+        app.show_explanation = true;
         assert!(app.show_explanation);
+    }
+
+    #[test]
+    fn test_fps_clamp_low() {
+        // fps parsing clamps to 5 minimum
+        let fps: u64 = 1u64.clamp(5, 120);
+        assert_eq!(fps, 5);
+    }
+
+    #[test]
+    fn test_fps_clamp_high() {
+        let fps: u64 = 999u64.clamp(5, 120);
+        assert_eq!(fps, 120);
+    }
+
+    #[test]
+    fn test_tick_rate_from_fps() {
+        let rate = Duration::from_millis(1000 / 30);
+        assert_eq!(rate.as_millis(), 33);
+        let rate60 = Duration::from_millis(1000 / 60);
+        assert_eq!(rate60.as_millis(), 16);
     }
 }

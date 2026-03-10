@@ -38,6 +38,9 @@ pub trait Demo: Send + Sync {
     fn is_paused(&self) -> bool;
     fn set_speed(&mut self, speed: u8);
     fn speed(&self) -> u8;
+    /// Toggle an optional split-view comparison mode (e.g. Rust vs C++).
+    /// Default implementation is a no-op.
+    fn toggle_vsmode(&mut self) {}
 }
 
 // ─── Placeholder Demo ────────────────────────────────────────────────────────
@@ -195,6 +198,12 @@ impl DemoRegistry {
     pub fn reset_current(&mut self, idx: usize) {
         if let Some(demo) = self.demos.get_mut(idx) {
             demo.reset();
+        }
+    }
+
+    pub fn toggle_vsmode_current(&mut self, idx: usize) {
+        if let Some(demo) = self.demos.get_mut(idx) {
+            demo.toggle_vsmode();
         }
     }
 }

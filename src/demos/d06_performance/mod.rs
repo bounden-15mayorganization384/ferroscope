@@ -387,47 +387,18 @@ impl Demo for PerformanceDemo {
             }
 
             PerfPhase::Summary => {
-                let unstable_ns = self.sort_results.iter()
-                    .find(|r| r.name == "sort_unstable")
-                    .map(|r| r.ns_per_op)
-                    .unwrap_or(0);
-                let stable_ns = self.sort_results.iter()
-                    .find(|r| r.name == "sort (stable)")
-                    .map(|r| r.ns_per_op)
-                    .unwrap_or(0);
-
-                let lines = vec![
-                    Line::from(Span::styled("Performance Summary", Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD))),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::styled("  sort_unstable  ns/elem : ", theme::dim_style()),
-                        Span::styled(format!("{:>8} ns", unstable_ns), Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD)),
-                    ]),
-                    Line::from(vec![
-                        Span::styled("  sort (stable)  ns/elem : ", theme::dim_style()),
-                        Span::styled(format!("{:>8} ns", stable_ns), Style::default().fg(theme::HEAP_BLUE).add_modifier(Modifier::BOLD)),
-                    ]),
-                    Line::from(""),
-                    Line::from(vec![
-                        Span::styled("  Arithmetic ops/sec     : ", theme::dim_style()),
-                        Span::styled(fmt_ops(self.arith_ops_per_sec), Style::default().fg(theme::BORROW_YELLOW).add_modifier(Modifier::BOLD)),
-                    ]),
-                    Line::from(vec![
-                        Span::styled("  Heap allocs/sec        : ", theme::dim_style()),
-                        Span::styled(fmt_ops(self.alloc_ops_per_sec), Style::default().fg(theme::STACK_CYAN).add_modifier(Modifier::BOLD)),
-                    ]),
-                    Line::from(""),
-                    Line::from(Span::styled(
-                        "  No GC pauses. Predictable latency. No runtime overhead.",
-                        Style::default().fg(theme::SAFE_GREEN),
-                    )),
-                ];
-                frame.render_widget(
-                    Paragraph::new(lines)
-                        .block(Block::default().title("All Results").borders(Borders::ALL)
-                            .border_style(Style::default().fg(theme::RUST_ORANGE))),
-                    chunks[1],
-                );
+                let s0 = if self.sort_results.len() > 0 { self.sort_results[0].ns_per_op.max(1) as f64 } else { 1.0 };
+                let s1 = if self.sort_results.len() > 1 { self.sort_results[1].ns_per_op.max(1) as f64 } else { 1.0 };
+                let arith_ns = if self.arith_ops_per_sec > 0 { 1_000_000_000.0 / self.arith_ops_per_sec as f64 } else { 1.0 };
+                let alloc_ns = if self.alloc_ops_per_sec > 0 { 1_000_000_000.0 / self.alloc_ops_per_sec as f64 } else { 1.0 };
+                let total = (s0 + s1 + arith_ns + alloc_ns).max(1.0);
+                let mut fg = crate::ui::widgets::FlameGraph::new();
+                fg.color = crate::theme::SAFE_GREEN;
+                fg.push_frame(format!("sort_unstable  {}ns/elem", self.sort_results.get(0).map(|r| r.ns_per_op).unwrap_or(0)), s0 / total);
+                fg.push_frame(format!("sort (stable)  {}ns/elem", self.sort_results.get(1).map(|r| r.ns_per_op).unwrap_or(0)), s1 / total);
+                fg.push_frame(format!("arithmetic     {} Mops/s", self.arith_ops_per_sec / 1_000_000), arith_ns / total);
+                fg.push_frame(format!("heap alloc     {} Kops/s", self.alloc_ops_per_sec / 1_000), alloc_ns / total);
+                fg.render(frame, chunks[1]);
             }
         }
 

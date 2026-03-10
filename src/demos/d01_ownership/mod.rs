@@ -153,7 +153,7 @@ pub fn get_step(step: usize) -> OwnershipStep {
             explanation: "The borrow checker enforces this at compile time. No use-after-move.",
             s1_state: VarState::Moved,
             s2_state: VarState::Owned,
-            s3_state: VarState::Hidden,
+            s3_state: VarState::Borrowed,
         },
         3 => OwnershipStep {
             title: "Step 4/8: Clone — explicit deep copy",
@@ -256,20 +256,12 @@ impl Demo for OwnershipDemo {
         frame.render_widget(var_panel, mid[0]);
 
         // Code panel
-        let code_lines: Vec<Line> = CODE_ALL.iter().enumerate().map(|(i, (line, _))| {
+        let mut code_panel = crate::ui::widgets::CodePanel::new("Code");
+        for (line, _) in CODE_ALL {
             let highlighted = info.code_lines.iter().any(|(l, _)| *l == *line);
-            if highlighted {
-                Line::from(Span::styled(
-                    format!("▶ {}", line),
-                    Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD),
-                ))
-            } else {
-                Line::from(Span::styled(format!("  {}", line), theme::dim_style()))
-            }
-        }).collect();
-        let code_panel = Paragraph::new(code_lines)
-            .block(Block::default().title("Code").borders(Borders::ALL));
-        frame.render_widget(code_panel, mid[1]);
+            code_panel.push_line(*line, highlighted);
+        }
+        code_panel.render(frame, mid[1]);
 
         // Explanation
         let expl = Paragraph::new(info.explanation)
@@ -299,6 +291,7 @@ impl Demo for OwnershipDemo {
     fn is_paused(&self) -> bool { self.paused }
     fn set_speed(&mut self, speed: u8) { self.speed = speed.clamp(1, 10); }
     fn speed(&self) -> u8 { self.speed }
+    fn toggle_vsmode(&mut self) { self.toggle_vs_mode(); }
 }
 
 impl OwnershipDemo {

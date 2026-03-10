@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Gauge, Paragraph, Sparkline},
+    widgets::{Block, Borders, Paragraph, Sparkline},
     Frame,
 };
 use sysinfo::System;
@@ -221,7 +221,6 @@ impl Demo for SystemMetricsDemo {
             .split(chunks[1]);
 
         for row in 0..rows {
-            let cores_in_row = ((row + 1) * per_row).min(cpu_count) - row * per_row;
             let col_constraints: Vec<Constraint> = (0..per_row)
                 .map(|_| Constraint::Ratio(1, per_row as u32))
                 .collect();
@@ -239,35 +238,15 @@ impl Demo for SystemMetricsDemo {
                 let history = &self.cpu_history[core_idx];
                 let current_usage = history.last().copied().unwrap_or(0.0);
                 let color = cpu_usage_color(current_usage);
-
-                // Convert f32 0-100 to u64 for Sparkline
-                let spark_data: Vec<u64> = history
-                    .iter()
-                    .map(|&v| (v.clamp(0.0, 100.0) as u64))
-                    .collect();
-
-                let title = format!(
-                    "CPU{} {:.0}%",
-                    core_idx,
-                    current_usage,
+                let mut sparkline = crate::ui::widgets::SparklineExt::new(
+                    format!("CPU{} {:3.0}%", core_idx, current_usage),
+                    100,
+                    color,
                 );
-
-                // Only render if the column is within the actual core count
-                if col < cores_in_row || core_idx < cpu_count {
-                    frame.render_widget(
-                        Sparkline::default()
-                            .block(
-                                Block::default()
-                                    .title(title)
-                                    .borders(Borders::ALL)
-                                    .border_style(Style::default().fg(color)),
-                            )
-                            .data(&spark_data)
-                            .max(100)
-                            .style(Style::default().fg(color)),
-                        cols[col],
-                    );
+                for &s in &self.cpu_history[core_idx] {
+                    sparkline.push(s as u64);
                 }
+                sparkline.render(frame, cols[col]);
             }
         }
 
@@ -275,26 +254,13 @@ impl Demo for SystemMetricsDemo {
         let used_mem = self.mem_history.last().copied().unwrap_or(0);
         let total_mem = self.total_mem_bytes.max(1);
         let mem_ratio = (used_mem as f64 / total_mem as f64).clamp(0.0, 1.0);
-        let mem_label = format!(
-            "RAM: {} / {}  ({:.1}%)",
-            format_bytes(used_mem),
-            format_bytes(total_mem),
-            mem_ratio * 100.0,
-        );
 
-        frame.render_widget(
-            Gauge::default()
-                .block(
-                    Block::default()
-                        .title("Memory")
-                        .borders(Borders::ALL)
-                        .border_style(Style::default().fg(theme::HEAP_BLUE)),
-                )
-                .gauge_style(Style::default().fg(theme::HEAP_BLUE))
-                .label(mem_label)
-                .ratio(mem_ratio),
-            chunks[2],
-        );
+        let label = format!("RAM: {} / {}  ({}%)",
+            format_bytes(used_mem),
+            format_bytes(self.total_mem_bytes),
+            (mem_ratio * 100.0) as u8);
+        crate::ui::widgets::GaugeBar::new(label, mem_ratio, crate::theme::HEAP_BLUE)
+            .render(frame, chunks[2]);
 
         // ── GC comparison row ─────────────────────────────────────────────────
         let gc_row = Layout::default()

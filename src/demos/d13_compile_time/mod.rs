@@ -31,6 +31,8 @@ pub struct CompileTimeDemo {
     pub bugs_caught_compile_time: u64,
     pub bugs_caught_runtime: u64,
     pub animation_tick: u64,
+    /// Target that bugs_caught_compile_time counts up toward (animated).
+    pub counter_target: u64,
 }
 
 impl CompileTimeDemo {
@@ -44,6 +46,7 @@ impl CompileTimeDemo {
             bugs_caught_compile_time: 0,
             bugs_caught_runtime: 0,
             animation_tick: 0,
+            counter_target: 0,
         }
     }
 
@@ -52,9 +55,9 @@ impl CompileTimeDemo {
     }
 
     pub fn advance_step(&mut self) {
-        // Increment by 1, 2, or 3 deterministically based on step index
+        // Bump target by 1, 2, or 3 deterministically based on step index
         let increment = ((self.step % 3) as u64) + 1;
-        self.bugs_caught_compile_time += increment;
+        self.counter_target += increment;
         // bugs_caught_runtime is never incremented — zero runtime surprises
         self.step = (self.step + 1) % STEPS;
         self.step_timer = 0.0;
@@ -165,6 +168,10 @@ impl Demo for CompileTimeDemo {
         }
         self.tick_count = self.tick_count.wrapping_add(1);
         self.animation_tick = self.animation_tick.wrapping_add(1);
+        // Animate counter catching up to target
+        if self.bugs_caught_compile_time < self.counter_target {
+            self.bugs_caught_compile_time += 1;
+        }
         self.step_timer += dt.as_secs_f64();
         if self.step_timer >= self.step_duration_secs() {
             self.advance_step();
@@ -298,6 +305,7 @@ impl Demo for CompileTimeDemo {
         self.animation_tick = 0;
         self.bugs_caught_compile_time = 0;
         self.bugs_caught_runtime = 0;
+        self.counter_target = 0;
         self.paused = false;
     }
 
@@ -367,12 +375,14 @@ mod tests {
         d.animation_tick = 42;
         d.bugs_caught_compile_time = 10;
         d.bugs_caught_runtime = 5;
+        d.counter_target = 15;
         d.reset();
         assert_eq!(d.step, 0);
         assert_eq!(d.tick_count, 0);
         assert_eq!(d.animation_tick, 0);
         assert_eq!(d.bugs_caught_compile_time, 0);
         assert_eq!(d.bugs_caught_runtime, 0);
+        assert_eq!(d.counter_target, 0);
         assert!(!d.is_paused());
     }
 
@@ -417,11 +427,11 @@ mod tests {
     #[test]
     fn test_bugs_caught_increments_on_advance() {
         let mut d = CompileTimeDemo::new();
-        let before = d.bugs_caught_compile_time;
+        let before = d.counter_target;
         d.advance_step();
         assert!(
-            d.bugs_caught_compile_time > before,
-            "bugs_caught_compile_time should increase on advance_step"
+            d.counter_target > before,
+            "counter_target should increase on advance_step"
         );
     }
 
@@ -461,6 +471,7 @@ mod tests {
         assert_eq!(d.animation_tick, 0);
         assert_eq!(d.bugs_caught_compile_time, 0);
         assert_eq!(d.bugs_caught_runtime, 0);
+        assert_eq!(d.counter_target, 0);
         assert!(!d.paused);
     }
 
@@ -471,5 +482,16 @@ mod tests {
         assert_eq!(d.animation_tick, 1);
         d.tick(Duration::from_millis(10));
         assert_eq!(d.animation_tick, 2);
+    }
+
+    #[test]
+    fn test_bugs_caught_animates_toward_target() {
+        let mut d = CompileTimeDemo::new();
+        d.advance_step(); // bumps counter_target by 1
+        assert_eq!(d.bugs_caught_compile_time, 0);
+        assert!(d.counter_target > 0);
+        d.tick(Duration::from_millis(1));
+        assert_eq!(d.bugs_caught_compile_time, 1); // one tick → one increment
+        assert_eq!(d.bugs_caught_compile_time, d.counter_target.min(1));
     }
 }

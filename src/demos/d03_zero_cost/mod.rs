@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, BarChart, Paragraph},
+    widgets::{Bar, BarChart, BarGroup, Block, Borders, Paragraph},
     Frame,
 };
 use crate::{demos::Demo, theme};
@@ -175,19 +175,20 @@ impl Demo for ZeroCostDemo {
             mid[1],
         );
 
-        // Stats
-        let match_str = if self.results_match() { "✓ Results identical" } else { "✗ Mismatch!" };
-        let match_color = if self.results_match() { theme::SAFE_GREEN } else { theme::CRAB_RED };
-        let ratio_str = format!("{:.3}x ratio (≈1.000 = zero cost)", self.ratio());
-        let stats = vec![
-            Line::from(vec![
-                Span::styled(format!(" {} | ", match_str), Style::default().fg(match_color).add_modifier(Modifier::BOLD)),
-                Span::styled(ratio_str, theme::dim_style()),
-                Span::styled(format!(" | run #{}", self.run_count), theme::dim_style()),
-            ]),
-        ];
+        // Stats — BarChart comparing iter_ns vs loop_ns
+        let max_ns = self.iter_ns.max(self.loop_ns).max(1);
+        let match_str = if self.results_match() { "✓ match" } else { "✗ mismatch" };
+        let bar_title = format!(" {} | ratio: {:.3}x | run #{} ", match_str, self.ratio(), self.run_count);
+        let iter_bar = Bar::default().value(self.iter_ns).label(Line::from("iter")).style(Style::default().fg(theme::SAFE_GREEN));
+        let loop_bar = Bar::default().value(self.loop_ns).label(Line::from("loop")).style(Style::default().fg(theme::HEAP_BLUE));
+        let bar_group = BarGroup::default().bars(&[iter_bar, loop_bar]);
         frame.render_widget(
-            Paragraph::new(stats).block(Block::default().borders(Borders::ALL)),
+            BarChart::default()
+                .data(bar_group)
+                .bar_width(7)
+                .bar_gap(1)
+                .max(max_ns)
+                .block(Block::default().title(bar_title).borders(Borders::ALL)),
             chunks[2],
         );
     }

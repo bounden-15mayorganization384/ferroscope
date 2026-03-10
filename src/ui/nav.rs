@@ -67,7 +67,14 @@ pub fn render_nav(frame: &mut Frame, area: Rect, app: &App, registry: &DemoRegis
             let key = KEYS.get(i).copied().unwrap_or("?");
             let name = registry.name(i).unwrap_or("???");
             let diff = demo_difficulty(i);
+            let visited = i < 32 && (app.visited_demos & (1u32 << i)) != 0;
+            let (visit_sym, visit_style) = if visited {
+                ("✓", Style::default().fg(theme::SAFE_GREEN))
+            } else {
+                ("·", theme::dim_style())
+            };
             Line::from(vec![
+                Span::styled(visit_sym, visit_style),
                 Span::styled(
                     format!("[{}] ", key),
                     theme::dim_style(),
@@ -183,5 +190,26 @@ mod tests {
             let k = KEYS.get(i).copied().unwrap_or("?");
             assert_ne!(k, "?", "No key defined for demo index {}", i);
         }
+    }
+
+    #[test]
+    fn test_render_with_some_visited() {
+        let mut app = App::new(15);
+        // Visit a few demos
+        for i in [0, 3, 7, 9, 14] { app.visit(i); }
+        let registry = DemoRegistry::new();
+        let backend = TestBackend::new(200, 5);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| render_nav(f, f.area(), &app, &registry)).unwrap();
+    }
+
+    #[test]
+    fn test_render_all_visited() {
+        let mut app = App::new(15);
+        for i in 0..15 { app.visit(i); }
+        let registry = DemoRegistry::new();
+        let backend = TestBackend::new(200, 5);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| render_nav(f, f.area(), &app, &registry)).unwrap();
     }
 }

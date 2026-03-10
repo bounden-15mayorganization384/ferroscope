@@ -12,10 +12,10 @@ pub fn app_layout(area: Rect) -> AppLayout {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),
-            Constraint::Length(3),
-            Constraint::Min(0),
-            Constraint::Length(1),
+            Constraint::Length(5), // header: border + 3 interior rows
+            Constraint::Length(3), // nav tabs
+            Constraint::Min(0),    // demo content
+            Constraint::Length(2), // footer: facts + controls (no border)
         ])
         .split(area);
 
@@ -74,11 +74,11 @@ mod tests {
     #[test]
     fn test_app_layout_normal() {
         let layout = app_layout(rect(80, 24));
-        assert_eq!(layout.header.height, 3);
+        assert_eq!(layout.header.height, 5);
         assert_eq!(layout.nav.height, 3);
-        assert_eq!(layout.footer.height, 1);
-        // content takes remaining = 24 - 3 - 3 - 1 = 17
-        assert_eq!(layout.content.height, 17);
+        assert_eq!(layout.footer.height, 2);
+        // content takes remaining = 24 - 5 - 3 - 2 = 14
+        assert_eq!(layout.content.height, 14);
         // all same width
         assert_eq!(layout.header.width, 80);
         assert_eq!(layout.nav.width, 80);
@@ -89,8 +89,8 @@ mod tests {
     #[test]
     fn test_app_layout_small() {
         let layout = app_layout(rect(40, 10));
-        // 10 - 3 - 3 - 1 = 3
-        assert_eq!(layout.content.height, 3);
+        // 10 - 5 - 3 - 2 = 0
+        assert_eq!(layout.content.height, 0);
     }
 
     #[test]

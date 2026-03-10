@@ -13,6 +13,7 @@ pub enum AppEvent {
     ToggleHelp,
     ToggleExplanation,
     Screenshot,
+    ToggleVsMode,
     Tick,
 }
 
@@ -43,6 +44,7 @@ pub fn key_event_to_app_event(key: KeyEvent) -> Option<AppEvent> {
         KeyCode::Char('?') => Some(AppEvent::ToggleHelp),
         KeyCode::Char('e') | KeyCode::Char('E') => Some(AppEvent::ToggleExplanation),
         KeyCode::Char('s') | KeyCode::Char('S') => Some(AppEvent::Screenshot),
+        KeyCode::Char('v') | KeyCode::Char('V') => Some(AppEvent::ToggleVsMode),
         _ => None,
     }
 }
@@ -100,6 +102,8 @@ mod tests {
         assert_eq!(key_event_to_app_event(key(KeyCode::Char('E'))), Some(AppEvent::ToggleExplanation));
         assert_eq!(key_event_to_app_event(key(KeyCode::Char('s'))), Some(AppEvent::Screenshot));
         assert_eq!(key_event_to_app_event(key(KeyCode::Char('S'))), Some(AppEvent::Screenshot));
+        assert_eq!(key_event_to_app_event(key(KeyCode::Char('v'))), Some(AppEvent::ToggleVsMode));
+        assert_eq!(key_event_to_app_event(key(KeyCode::Char('V'))), Some(AppEvent::ToggleVsMode));
     }
 
     #[test]

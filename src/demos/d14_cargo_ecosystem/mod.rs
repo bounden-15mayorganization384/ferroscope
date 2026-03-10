@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Gauge, List, ListItem, Paragraph},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
 use crate::{demos::Demo, theme};
@@ -111,7 +111,9 @@ impl Demo for CargoDemo {
             return;
         }
         self.tick_count = self.tick_count.wrapping_add(1);
-        self.dep_tree_frame = (self.dep_tree_frame + 1) % 8;
+        if self.tick_count % 10 == 0 {
+            self.dep_tree_frame = (self.dep_tree_frame + 1) % dep_tree_lines().len();
+        }
         self.build_progress = (self.build_progress + 0.02 * self.speed as f64).min(1.0);
         self.step_timer += dt.as_secs_f64();
         if self.step_timer >= self.step_duration_secs() {
@@ -324,24 +326,9 @@ impl Demo for CargoDemo {
                 );
             }
             4 => {
-                // Build progress gauge
-                let label = format!(
-                    "cargo build --release  [{:.0}%]",
-                    self.build_progress * 100.0
-                );
-                frame.render_widget(
-                    Gauge::default()
-                        .block(
-                            Block::default()
-                                .title("Compilation Pipeline")
-                                .borders(Borders::ALL)
-                                .border_style(Style::default().fg(theme::HEAP_BLUE)),
-                        )
-                        .gauge_style(Style::default().fg(theme::HEAP_BLUE))
-                        .label(label)
-                        .ratio(self.build_progress),
-                    chunks[1],
-                );
+                let label = format!("Compilation Pipeline  [{:.0}%]  cargo build --release", self.build_progress * 100.0);
+                crate::ui::widgets::GaugeBar::new(label, self.build_progress, crate::theme::HEAP_BLUE)
+                    .render(frame, chunks[1]);
             }
             _ => {
                 // crates.io ecosystem
@@ -529,7 +516,10 @@ mod tests {
     #[test]
     fn test_dep_tree_frame_increments() {
         let mut d = CargoDemo::new();
-        d.tick(Duration::from_millis(10));
+        // dep_tree_frame advances every 10 ticks
+        for _ in 0..10 {
+            d.tick(Duration::from_millis(10));
+        }
         assert_eq!(d.dep_tree_frame, 1);
     }
 

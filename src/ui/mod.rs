@@ -30,6 +30,12 @@ pub fn draw(frame: &mut Frame, app: &App, registry: &DemoRegistry) {
     if app.show_help {
         render_help_overlay(frame, area);
     }
+
+    if app.has_achievement_flash() {
+        if let Some((name, _)) = app.achievement_flash {
+            render_achievement_overlay(frame, area, name);
+        }
+    }
 }
 
 fn render_explanation_panel(frame: &mut Frame, area: Rect, app: &App, registry: &DemoRegistry) {
@@ -53,7 +59,7 @@ fn render_explanation_panel(frame: &mut Frame, area: Rect, app: &App, registry: 
 }
 
 fn render_help_overlay(frame: &mut Frame, area: Rect) {
-    let popup = layout::centered_rect(60, 70, area);
+    let popup = layout::centered_rect(60, 75, area);
     let help_text = vec![
         Line::from(Span::styled("  Keyboard Shortcuts", Style::default().fg(theme::RUST_ORANGE).add_modifier(Modifier::BOLD))),
         Line::from(""),
@@ -62,11 +68,12 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         Line::from("  -> / l      Next demo"),
         Line::from("  1-9, 0      Jump to demo 1-10"),
         Line::from("  a, b, c     Jump to demo 11, 12, 13"),
-        Line::from("  d, e        Jump to demo 14, 15"),
+        Line::from("  d, f        Jump to demo 14, 15"),
         Line::from(""),
         Line::from(Span::styled("Controls", Style::default().fg(theme::BORROW_YELLOW).add_modifier(Modifier::UNDERLINED))),
         Line::from("  Space       Pause / Resume"),
         Line::from("  R           Reset current demo"),
+        Line::from("  V           Toggle vs-mode (Rust vs C++)"),
         Line::from("  +           Increase speed"),
         Line::from("  -           Decrease speed"),
         Line::from(""),
@@ -78,6 +85,9 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         Line::from(""),
         Line::from(Span::styled("Difficulty  [B]=Beginner  [I]=Intermediate  [A]=Advanced",
             Style::default().fg(theme::TEXT_DIM))),
+        Line::from(""),
+        Line::from(Span::styled("Tip: Try the Konami code for a surprise...",
+            Style::default().fg(theme::CRAB_RED).add_modifier(Modifier::DIM))),
     ];
 
     let para = Paragraph::new(help_text)
@@ -88,6 +98,36 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
                 .border_style(Style::default().fg(theme::RUST_ORANGE)),
         )
         .style(Style::default().fg(Color::White));
+
+    frame.render_widget(Clear, popup);
+    frame.render_widget(para, popup);
+}
+
+fn render_achievement_overlay(frame: &mut Frame, area: Rect, achievement_name: &str) {
+    // Small banner at the bottom-right corner
+    let width = 34u16.min(area.width);
+    let height = 3u16;
+    let x = area.width.saturating_sub(width + 1);
+    let y = area.height.saturating_sub(height + 2);
+    let popup = Rect::new(x, y, width, height);
+
+    let lines = vec![
+        Line::from(Span::styled(
+            " 🏆 Achievement Unlocked!",
+            Style::default().fg(theme::BORROW_YELLOW).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            format!("  ★  {}", achievement_name),
+            Style::default().fg(theme::SAFE_GREEN).add_modifier(Modifier::BOLD),
+        )),
+    ];
+
+    let para = Paragraph::new(lines)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(theme::BORROW_YELLOW)),
+        );
 
     frame.render_widget(Clear, popup);
     frame.render_widget(para, popup);
@@ -133,6 +173,38 @@ mod tests {
         let mut app = App::new(15);
         app.show_help = true;
         app.show_explanation = true;
+        let registry = DemoRegistry::new();
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| draw(f, &app, &registry)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_with_achievement_flash() {
+        let mut app = App::new(15);
+        app.achievement_flash = Some(("Explorer", 9999));
+        app.tick_count = 100; // within flash window
+        let registry = DemoRegistry::new();
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| draw(f, &app, &registry)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_konami_active() {
+        let mut app = App::new(15);
+        app.konami_active = true;
+        app.konami_countdown = 90;
+        let registry = DemoRegistry::new();
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).unwrap();
+        terminal.draw(|f| draw(f, &app, &registry)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_all_visited() {
+        let mut app = App::new(15);
+        for i in 0..15 { app.visit(i); }
         let registry = DemoRegistry::new();
         let backend = TestBackend::new(120, 40);
         let mut terminal = Terminal::new(backend).unwrap();

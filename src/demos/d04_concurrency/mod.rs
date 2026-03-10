@@ -347,32 +347,17 @@ impl Demo for ConcurrencyDemo {
                 .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
                 .split(chunks[1]);
 
-            // Thread visualization panel
-            let thread_lines: Vec<Line> = self.threads.iter().map(|t| {
-                let color = t.state.color();
-                let sym = t.state.symbol();
-                let bar_filled = (t.progress * 20.0) as usize;
-                let bar_empty = 20usize.saturating_sub(bar_filled);
-                let bar = format!("[{}{}]", "█".repeat(bar_filled), "░".repeat(bar_empty));
-                Line::from(vec![
-                    Span::styled(
-                        format!("  T{} {:12} ", t.id, t.label),
-                        Style::default().fg(color),
-                    ),
-                    Span::styled(sym, Style::default().fg(color).add_modifier(Modifier::BOLD)),
-                    Span::styled(
-                        format!(" {} {:3.0}%", bar, t.progress * 100.0),
-                        Style::default().fg(color),
-                    ),
-                ])
-            }).collect();
-
-            frame.render_widget(
-                Paragraph::new(thread_lines)
-                    .block(Block::default().title("Threads").borders(Borders::ALL)
-                        .border_style(Style::default().fg(theme::ASYNC_PURPLE))),
-                mid[0],
-            );
+            let mut chart = crate::ui::widgets::ThreadLaneChart::new(self.threads.len());
+            for thread in &self.threads {
+                let ws = match thread.state {
+                    ThreadVizState::Spawning | ThreadVizState::Running => crate::ui::widgets::ThreadState::Running,
+                    ThreadVizState::Waiting => crate::ui::widgets::ThreadState::Waiting,
+                    ThreadVizState::Done => crate::ui::widgets::ThreadState::Done,
+                };
+                chart.set_state(thread.id, ws);
+                chart.set_progress(thread.id, thread.progress);
+            }
+            chart.render(frame, mid[0]);
 
             // Channel / event log
             let log_items: Vec<ListItem> = self.channel_msgs.iter().map(|m| {

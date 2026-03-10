@@ -256,7 +256,8 @@ impl Demo for NoStdDemo {
             left_rows[1],
         );
 
-        // Right panel: binary size bar chart
+        // Right panel: binary size bar chart with animated active-row indicator
+        let pulse = if self.animation_frame % 2 == 0 { "▶ " } else { "  " };
         let bar_lines: Vec<Line> = BINARY_TIERS
             .iter()
             .enumerate()
@@ -268,8 +269,9 @@ impl Demo for NoStdDemo {
                 } else {
                     Style::default().fg(theme::TEXT_DIM)
                 };
+                let prefix = if i == self.step % STEPS { pulse } else { "  " };
                 Line::from(Span::styled(
-                    format!("{}  {}  {}", label, kb, bar),
+                    format!("{}{}  {}  {}", prefix, label, kb, bar),
                     style,
                 ))
             })
